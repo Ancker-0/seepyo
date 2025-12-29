@@ -5,6 +5,8 @@ from assassyn.backend import elaborate
 from assassyn.utils import run_simulator, run_verilator
 
 from fetch import Fetcher
+from src.instruction import Instruction
+
 
 class Driver(Module):
     def __init__(self):
