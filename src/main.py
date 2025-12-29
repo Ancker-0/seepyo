@@ -27,7 +27,8 @@ def build():
 
 def main():
     sys = build()
-    sim, verilog = elaborate(sys, verbose=True, simulator=True, verilog=True, resource_base='./data/')
+    resource_path = os.path.join(os.path.dirname(__file__), "..", "data")
+    sim, verilog = elaborate(sys, verbose=True, simulator=True, verilog=True, resource_base=resource_path)
     output = run_simulator(sim)
     print(output)
 main()
