@@ -11,8 +11,8 @@ class Driver(Module):
         super().__init__({})
 
     @module.combinational
-    def build(self):
-        log("Hello")
+    def build(self, fetcher: Fetcher):
+        fetcher.async_called()
 
 def build():
     sys = SysBuilder('seepyo')
@@ -22,7 +22,7 @@ def build():
 
         init_file = 'test.data'
         fetcher.build(init_file)
-        driver.build()
+        driver.build(fetcher)
     return sys
 
 def main():

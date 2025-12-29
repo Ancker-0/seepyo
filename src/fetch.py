@@ -11,12 +11,14 @@ class Fetcher(Module):
 
     @module.combinational
     def build(self, init_file: str):
-        sram = SRAM(INST_WIDTH, 2**ADDR_WIDTH, init_file)
-        re = Bits(1)(0)
         we = Bits(1)(0)
-        address_wire = Bits(ADDR_WIDTH)(0)
-        write_wire = Bits(INST_WIDTH)(0)
+        re = Bits(1)(1)
+        address_wire = Bits(ADDR_WIDTH)(1)
+        write_wire = Bits(INST_WIDTH)(1234)
+
+        sram = SRAM(INST_WIDTH, 2**ADDR_WIDTH, init_file)
         sram.build(we, re, address_wire, write_wire)
-        sram.dout
-        val = sram.dout[0]
-        log('{}', val)
+        val = RegArray(Bits(32), 1)
+        (val&self)[0] <= sram.dout[0]
+        log('Got inst {}', val[0])
+        log("we: {} | re: {} | addr: {} | dout: {}", we, re, address_wire, sram.dout[0])
