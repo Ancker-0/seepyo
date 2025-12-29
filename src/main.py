@@ -12,7 +12,7 @@ class Driver(Module):
 
     @module.combinational
     def build(self):
-        pass
+        log("Hello")
 
 def build():
     sys = SysBuilder('seepyo')
