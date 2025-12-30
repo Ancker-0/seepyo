@@ -51,6 +51,41 @@ Id_to_Instruction_Name = {
     Bits(32)(37): "lui",
 }
 
+Number_to_Register_Name = [
+    "zero",
+    "ra",
+    "sp",
+    "gp",
+    "tp",
+    "t0",
+    "t1",
+    "t2",
+    "s0",
+    "s1",
+    "a0",
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5",
+    "a6",
+    "a7",
+    "s2",
+    "s3",
+    "s4",
+    "s5",
+    "s6",
+    "s7",
+    "s8",
+    "s9",
+    "s10",
+    "s11",
+    "t3",
+    "t4",
+    "t5",
+    "t6"
+]
+
 class Inst:
     rd: Bits
     rs1: Bits
@@ -84,14 +119,14 @@ class Inst:
             with Condition(index == self.id):
                 # log(f"found id = {{}}, inst = {name}", index)
                 with Condition(self.Type == Bits(32)(1)):
-                    log(f"inst = {name}, rd = {{}}, rs1 = {{}}, rs2 = {{}} --- [Type R]", self.rd, self.rs1, self.rs2)
+                    log(f"inst = {name}, rd = ~{{}}~, rs1 = ~{{}}~, rs2 = ~{{}}~ --- [Type R]", self.rd, self.rs1, self.rs2)
                 with Condition(self.Type == Bits(32)(2)):
-                    log(f"inst = {name}, rd = {{}}, rs1 = {{}}, imm = {{}} --- [Type I]", self.rd, self.rs1, self.imm)
+                    log(f"inst = {name}, rd = ~{{}}~, rs1 = ~{{}}~, imm = {{}} --- [Type I]", self.rd, self.rs1, self.imm)
                 with Condition(self.Type == Bits(32)(3)):
-                    log(f"inst = {name}, rs2 = {{}}, imm = {{}}, ( rs1 = {{}} ) --- [Type S]", self.rs2, self.imm, self.rs1)
+                    log(f"inst = {name}, rs2 = ~{{}}~, imm = {{}}, ( rs1 = ~{{}}~ ) --- [Type S]", self.rs2, self.imm, self.rs1)
                 with Condition(self.Type == Bits(32)(4)):
-                    log(f"inst = {name}, rs1 = {{}}, rs2 = {{}}, offset(store as imm) = {{}} --- [Type B]", self.rs1, self.rs2, self.imm)
+                    log(f"inst = {name}, rs1 = ~{{}}~, rs2 = ~{{}}~, offset(store as imm) = {{}} --- [Type B]", self.rs1, self.rs2, self.imm)
                 with Condition(self.Type == Bits(32)(5)):
-                    log(f"inst = {name}, rd = {{}}, offset(store as imm) = {{}} --- [Type J]", self.rd, self.imm)
+                    log(f"inst = {name}, rd = ~{{}}~, offset(store as imm) = {{}} --- [Type J]", self.rd, self.imm)
                 with Condition(self.Type == Bits(32)(6)):
-                    log(f"inst = {name}, rd = {{}}, immu = {{}} --- [Type U]", self.rd, self.imm)
+                    log(f"inst = {name}, rd = ~{{}}~, immu = {{}} --- [Type U]", self.rd, self.imm)
