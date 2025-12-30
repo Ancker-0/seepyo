@@ -78,6 +78,8 @@ class Inst:
         return self
 
     def show(self):
+        with Condition(self.id == Bits(32)(0)):
+            log("Invalid Inst")
         for index, name in Id_to_Instruction_Name.items():
             with Condition(index == self.id):
                 # log(f"found id = {{}}, inst = {name}", index)
@@ -92,6 +94,4 @@ class Inst:
                 with Condition(self.Type == Bits(32)(5)):
                     log(f"inst = {name}, rd = {{}}, offset(store as imm) = {{}} --- [Type J]", self.rd, self.imm)
                 with Condition(self.Type == Bits(32)(6)):
-                    log(f"inst = {name}, rd = {{}}, rs1 = {{}}, imm = {{}} --- [Type I]", self.rd, self.rs1, self.imm)
-                with Condition(self.Type == Bits(32)(7)):
                     log(f"inst = {name}, rd = {{}}, immu = {{}} --- [Type U]", self.rd, self.imm)
