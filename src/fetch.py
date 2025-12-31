@@ -3,9 +3,7 @@ from assassyn.backend import elaborate
 from assassyn.utils import run_simulator, run_verilator
 
 from instruction import *
-
-ADDR_WIDTH = 12
-INST_WIDTH = 32
+from const import INST_WIDTH, ADDR_WIDTH
 
 
 def get_number_range(v: Bits, l: int, r: int):
