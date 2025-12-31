@@ -6,6 +6,7 @@ from assassyn.utils import run_simulator, run_verilator
 
 from fetch import Fetcher
 from src.instruction import Instruction, Number_to_Register_Name
+from const import INST_WIDTH, ADDR_WIDTH
 
 
 class Driver(Module):
@@ -20,10 +21,16 @@ def build():
     sys = SysBuilder('seepyo')
     with sys:
         fetcher = Fetcher()
+        init_file = 'test.data'
+        sram = SRAM(INST_WIDTH, 2 ** ADDR_WIDTH, init_file)
+
+        print(type(sram.dout))
+
+        we, re, address_wire, write_wire = fetcher.build(sram)
+        sram.build(we, re, address_wire, write_wire)
         driver = Driver()
 
-        init_file = 'test.data'
-        fetcher.build(init_file)
+
         driver.build(fetcher)
     return sys
 

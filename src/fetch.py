@@ -9,7 +9,7 @@ from const import INST_WIDTH, ADDR_WIDTH
 def get_number_range(v: Bits, l: int, r: int):
     # get [l,r] of the Bits, 0-index
     sz = r - l + 1
-    tmp = v >> Bits(INST_WIDTH)(l)
+    tmp = (v >> Bits(INST_WIDTH)(l))
     if sz < 32:
         tmp &= (Bits(INST_WIDTH)(1) << Bits(INST_WIDTH)(sz)) - Bits(INST_WIDTH)(1)
     return tmp
@@ -211,7 +211,7 @@ class Fetcher(Module):
         super().__init__({})
 
     @module.combinational
-    def build(self, init_file: str):
+    def build(self, sram: SRAM):
         we = Bits(1)(0)
         re = ~we
         # re = Bits(1)(1)
@@ -223,15 +223,14 @@ class Fetcher(Module):
         address_wire = tick[0]
         write_wire = Bits(INST_WIDTH)(0)
 
-        sram = SRAM(INST_WIDTH, 2 ** ADDR_WIDTH, init_file)
-        sram.build(we, re, address_wire, write_wire)
         val = RegArray(Bits(32), 1)
-        log("we: {} | re: {} | addr: {} | dout: {} | or {}", we, re, address_wire, sram.dout[0],
-            get_number_range(sram.dout[0], 0, 0))
+        log("we: {} | re: {} | addr: {} | dout: {}", we, re, address_wire, sram.dout[0])
         (val & self)[0] <= sram.dout[0]
         log('Got inst {}', val[0])
 
         decode_inst(sram.dout[0]).show()
+
+        return we, re, address_wire, write_wire
 
         # tmp: Instruction = Inst(Bits(32)(1), Bits(32)(1), Bits(32)(1), Bits(32)(1), Bits(32)(1), Bits(32)(1))
         # tmp.show()
