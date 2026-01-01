@@ -224,25 +224,9 @@ class Fetcher(Module):
         write_wire = Bits(INST_WIDTH)(0)
 
         val = RegArray(Bits(32), 1)
-        log("we: {} | re: {} | addr: {} | dout: {}", we, re, address_wire, sram.dout[0])
         (val & self)[0] <= sram.dout[0]
         log('Got inst {}', val[0])
 
         decode_inst(sram.dout[0]).show()
 
         return we, re, address_wire, write_wire
-
-        # tmp: Instruction = Inst(Bits(32)(1), Bits(32)(1), Bits(32)(1), Bits(32)(1), Bits(32)(1), Bits(32)(1))
-        # tmp.show()
-        # tmp.Type = Bits(32)(2)
-        # tmp.show()
-        # tmp.Type = Bits(32)(3)
-        # tmp.show()
-        # tmp.Type = Bits(32)(4)
-        # tmp.show()
-        # tmp.Type = Bits(32)(5)
-        # tmp.show()
-        # tmp.Type = Bits(32)(6)
-        # tmp.show()
-        # tmp.Type = Bits(32)(7)
-        # tmp.show()
