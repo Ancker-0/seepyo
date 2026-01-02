@@ -211,7 +211,7 @@ class Fetcher(Module):
         super().__init__({})
 
     @module.combinational
-    def build(self, sram: SRAM):
+    def build(self, sram: SRAM, rs, test_part):
         we = Bits(1)(0)
         re = ~we
         # re = Bits(1)(1)
@@ -227,6 +227,17 @@ class Fetcher(Module):
         (val & self)[0] <= sram.dout[0]
         log('Got inst {}', val[0])
 
-        decode_inst(sram.dout[0]).show()
+        inst = decode_inst(sram.dout[0])
+        rs.rd.push(inst.rd)
+        rs.rs1.push(inst.rs1)
+        rs.rs2.push(inst.rs2)
+        rs.imm.push(inst.imm)
+        rs.Type.push(inst.Type)
+        rs.Id.push(inst.id)
+
+        rs.inst_order_id.push(address_wire)
+
+        rs.async_called()
+        test_part.async_called()
 
         return we, re, address_wire, write_wire

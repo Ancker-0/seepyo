@@ -5,9 +5,21 @@ from assassyn.backend import elaborate
 from assassyn.utils import run_simulator, run_verilator
 
 from fetch import Fetcher
-from src.instruction import Instruction, Number_to_Register_Name
+from src.instruction import Instruction, Number_to_Register_Name, Id_to_Instruction_Name
 from const import INST_WIDTH, ADDR_WIDTH
+from rs import RS
+from register import Register
 
+class Test_Part(Module):
+    def __init__(self):
+        super().__init__({})
+
+    @module.combinational
+    def build(self, rf, rs):
+        rf.update(Bits(32)(6), Bits(32)(113), Bits(32)(0))
+        rf.update(Bits(32)(2), Bits(32)(0), Bits(32)(2))
+        # for i in range(32):
+        #     rf.update(Bits(32)(i), Bits(32)(421 & (((i & 1) << 10) - 1)), Bits(32)(2 & ((((i & 1) ^ 1) << 10) - 1)))
 
 class Driver(Module):
     def __init__(self):
@@ -24,14 +36,18 @@ def build():
         init_file = 'test.data'
         sram = SRAM(INST_WIDTH, 2 ** ADDR_WIDTH, init_file)
 
-        print(type(sram.dout))
-
-        we, re, address_wire, write_wire = fetcher.build(sram)
-        sram.build(we, re, address_wire, write_wire)
         driver = Driver()
+        test_part = Test_Part()
+        rf = Register(test_part)
+        rs = RS()
+
+        we, re, address_wire, write_wire = fetcher.build(sram, rs, test_part)
+        sram.build(we, re, address_wire, write_wire)
 
 
         driver.build(fetcher)
+        rs.build(rf)
+        test_part.build(rf, rs)
     return sys
 
 def main():
@@ -40,9 +56,11 @@ def main():
     sim, verilog = elaborate(sys, verbose=True, simulator=True, verilog=True, resource_base=resource_path)
     output = run_simulator(sim)
 
-    for [id, reg_name] in enumerate(Number_to_Register_Name):
+    for [Id, reg_name] in enumerate(Number_to_Register_Name):
         # print(id, reg_name)
-        output = output.replace(f'~{id}~', reg_name)
+        output = output.replace(f'~{Id}~', reg_name)
+    for [Id, inst_name] in Id_to_Instruction_Name.items():
+        output = output.replace(f'${Id}$', inst_name)
 
     print(output)
 main()

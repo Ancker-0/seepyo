@@ -10,9 +10,9 @@ class RegArrays:
         self.ego = ego
 
     def __getitem__(self, item):
-        if (isinstance(int, item)):
+        if isinstance(item, int):
             return self.array[item][0]
-        if (isinstance(Value, item)):
+        elif isinstance(item, Value):
             tmp = self.array[0][0]
             for i in range(self.size):
                 tmp = (item == Bits(32)(i)).select(self.array[i][0], tmp)
@@ -20,9 +20,9 @@ class RegArrays:
         return None
 
     def __setitem__(self, key, value):
-        if (isinstance(int, key)):
+        if isinstance(key, int):
             (self.array[key] & self.ego)[0] <= value
-        if (isinstance(Value, key)):
+        elif isinstance(key, Value):
             for i in range(self.size):
                 with Condition(key == Bits(32)(i)):
                     (self.array[i] & self.ego)[0] <= value
