@@ -18,6 +18,9 @@ class RS(Module):
             "Id": Port(Bits(INST_WIDTH)),
             "flush_tag": Port(Bits(INST_WIDTH)),
             "inst_order_id": Port(Bits(INST_WIDTH)),
+
+            "rob_id": Port(Bits(INST_WIDTH)),
+            "rob_value": Port(Bits(INST_WIDTH)),
         })
 
         self.size = RS_SIZE
@@ -93,4 +96,18 @@ class RS(Module):
                             self.Dest[i] = inst_id
                     once_tag = once_tag & self.Busy[i]
 
+            # done things for ROB
+            with Condition(self.rob_id.valid()):
+                rob_id = self.rob_id.pop()
+                rob_value = self.rob_value.pop()
+                for i in range(self.size):
+                    with Condition(self.Busy[i]):
+                        with Condition(self.Qj[i] == rob_id):
+                            self.Vj[i] = rob_value
+                            self.Qj[i] = Bits(32)(0)
+                        with Condition(self.Qk[i] == rob_id):
+                            self.Vk[i] = rob_value
+                            self.Qk[i] = Bits(32)(0)
+
+        # TODO is async_called alu
         self.log()

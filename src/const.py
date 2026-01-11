@@ -5,3 +5,4 @@ ROB_WIDTH  = 3
 ROB_SIZE   = 1 << ROB_WIDTH
 
 RS_SIZE = 8
+ROB_SIZE = 8

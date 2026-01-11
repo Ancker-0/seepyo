@@ -86,6 +86,61 @@ Number_to_Register_Name = [
     "t6"
 ]
 
+Id_Type_Map = {
+    Bits(32)(0): Bits(32)(0),
+
+    Bits(32)(1): Bits(32)(1),
+    Bits(32)(2): Bits(32)(1),
+    Bits(32)(3): Bits(32)(1),
+    Bits(32)(4): Bits(32)(1),
+    Bits(32)(5): Bits(32)(1),
+    Bits(32)(6): Bits(32)(1),
+    Bits(32)(7): Bits(32)(1),
+    Bits(32)(8): Bits(32)(1),
+    Bits(32)(9): Bits(32)(1),
+    Bits(32)(10): Bits(32)(1),
+
+    Bits(32)(11): Bits(32)(2),
+    Bits(32)(12): Bits(32)(2),
+    Bits(32)(13): Bits(32)(2),
+    Bits(32)(14): Bits(32)(2),
+    Bits(32)(15): Bits(32)(2),
+    Bits(32)(16): Bits(32)(2),
+    Bits(32)(17): Bits(32)(2),
+    Bits(32)(18): Bits(32)(2),
+    Bits(32)(19): Bits(32)(2),
+
+    Bits(32)(20): Bits(32)(2),
+    Bits(32)(21): Bits(32)(2),
+    Bits(32)(22): Bits(32)(2),
+    Bits(32)(23): Bits(32)(2),
+    Bits(32)(24): Bits(32)(2),
+
+    Bits(32)(25): Bits(32)(3),
+    Bits(32)(26): Bits(32)(3),
+    Bits(32)(27): Bits(32)(3),
+
+    Bits(32)(28): Bits(32)(4),
+    Bits(32)(29): Bits(32)(4),
+    Bits(32)(30): Bits(32)(4),
+    Bits(32)(31): Bits(32)(4),
+    Bits(32)(32): Bits(32)(4),
+    Bits(32)(33): Bits(32)(4),
+
+    Bits(32)(34): Bits(32)(5),
+
+    Bits(32)(35): Bits(32)(2),
+
+    Bits(32)(36): Bits(32)(6),
+    Bits(32)(37): Bits(32)(6),
+}
+
+def inst_id_to_type(id):
+    res = Bits(32)(0)
+    for Id, Type in Id_Type_Map.items():
+        res = (id == Id).select(Type, res)
+    return res
+
 def get_int_val(v: Bits, hb):#[0,hb]
     res = v.bitcast(Int(32))
     res = (((Bits(32)(1) << Bits(32)(hb)) & v) != Bits(32)(0)).select(v.bitcast(Int(32)) - Int(32)(1 << hb) - Int(32)(1 << hb), res)
