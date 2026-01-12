@@ -9,6 +9,8 @@ from src.instruction import Instruction, Number_to_Register_Name, Id_to_Instruct
 from const import INST_WIDTH, ADDR_WIDTH
 from rs import RS
 from register import Register
+from rob import ROB
+from alu import ALU
 
 class Test_Part(Module):
     def __init__(self):
@@ -40,13 +42,16 @@ def build():
         test_part = Test_Part()
         rf = Register(test_part)
         rs = RS()
+        rob = ROB()
+        alu = ALU()
 
-        we, re, address_wire, write_wire = fetcher.build(sram, rs, test_part)
+        we, re, address_wire, write_wire = fetcher.build(sram, rs, rob, test_part)
         sram.build(we, re, address_wire, write_wire)
 
-
         driver.build(fetcher)
-        rs.build(rf)
+        rs.build(rf, alu)  # RS 需要引用 ALU 来发射指令
+        rob.build(rf, rs)
+        alu.build(rob)
         test_part.build(rf, rs)
     return sys
 

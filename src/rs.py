@@ -16,7 +16,7 @@ class RS(Module):
             "imm": Port(Bits(INST_WIDTH)),
             "Type": Port(Bits(INST_WIDTH)),
             "Id": Port(Bits(INST_WIDTH)),
-            "flush_tag": Port(Bits(INST_WIDTH)),
+            "flush_tag": Port(Bits(1)),
             "inst_order_id": Port(Bits(INST_WIDTH)),
 
             "rob_id": Port(Bits(INST_WIDTH)),
@@ -49,7 +49,7 @@ class RS(Module):
         log("------- RS log end -------")
 
     @module.combinational
-    def build(self, rf):
+    def build(self, rf, alu):
         flush = self.flush_tag.valid()
         with Condition(flush):
             for i in range(self.size):
@@ -109,5 +109,25 @@ class RS(Module):
                             self.Vk[i] = rob_value
                             self.Qk[i] = Bits(32)(0)
 
-        # TODO is async_called alu
+            # 发射到 ALU
+            once_tag = Bits(1)(1)
+            for i in range(self.size):
+                busy_ready = (self.Busy[i] == Bits(1)(1))
+                qj_ready = (self.Qj[i] == Bits(32)(0))
+                qk_ready = (self.Qk[i] == Bits(32)(0))
+                ready = busy_ready & qj_ready & qk_ready
+                with Condition(once_tag & ready):
+                    # 直接发射到 ALU 的端口
+                    alu.op_id.push(self.Op_id[i])
+                    alu.vj.push(self.Vj[i])
+                    alu.vk.push(self.Vk[i])
+                    alu.rob_id.push(self.Dest[i])
+                    # 清空 RS 条目
+                    self.clean(i)
+                    log("RS: fired to ALU, Op_id=${}$, Vj={}, Vk={}, rob_entry_id={}", self.Op_id[i], self.Vj[i], self.Vk[i], self.Dest[i])
+                once_tag = once_tag & ~ready
+
+            # 触发 ALU 处理
+            alu.async_called()
+
         self.log()

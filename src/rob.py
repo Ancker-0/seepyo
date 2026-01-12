@@ -25,8 +25,8 @@ class ROB(Module):
         self.Op_id = RegArrays(Bits(32), ROB_SIZE, self)
         self.dest = RegArrays(Bits(32), ROB_SIZE, self)
         self.value = RegArrays(Bits(32), ROB_SIZE, self)
-        self.expect_value = RegArrays(Bits(32), ROB_SIZE, self)
-        self.branch_PC = RegArrays(Bits(32), ROB_SIZE, self)
+        self.expect_val = RegArrays(Bits(32), ROB_SIZE, self)  # 重命名避免与端口冲突
+        self.branch_pc_val = RegArrays(Bits(32), ROB_SIZE, self)  # 重命名避免与端口冲突
         self.ID = RegArrays(Bits(32), ROB_SIZE, self)
         self.L = RegArrays(Bits(32), 1, self)
         self.R = RegArrays(Bits(32), 1, self)
@@ -39,32 +39,40 @@ class ROB(Module):
         self.dest[pos] = Bits(32)(0)
         self.value[pos] = Bits(32)(0)
         self.ID[pos] = Bits(32)(0)
-        self.expect_value[pos] = Bits(32)(0)
-        self.branch_PC[pos] = Bits(32)(0)
+        self.expect_val[pos] = Bits(32)(0)
+        self.branch_pc_val[pos] = Bits(32)(0)
 
     def rob_clear(self):
         for i in range(ROB_SIZE):
             self.rob_clean_one(i)
 
     def rob_push(self, Op_id, dest, value, ID, expect_value, branch_PC):
-        (self.R & self)[0] <= (self.R[0] + Bits(32)(1)) % Bits(32)(ROB_SIZE)
+        # 更新 R 指针（先读取当前值，计算新值，然后写回）
+        new_R = (self.R[0] + Bits(32)(1)) % Bits(32)(ROB_SIZE)
+        self.R[0] = new_R
+
+        # 使用更新前的 R[0] 作为索引
         self.busy[self.R[0]] = Bits(1)(1)
         self.Op_id[self.R[0]] = Op_id
         self.dest[self.R[0]] = dest
         self.value[self.R[0]] = value
         self.ID[self.R[0]] = ID
-        self.expect_value[self.R[0]] = expect_value
-        self.branch_PC[self.R[0]] = branch_PC
+        self.expect_val[self.R[0]] = expect_value
+        self.branch_pc_val[self.R[0]] = branch_PC
 
     def rob_pop(self):
-        (self.L & self)[0] <= (self.L[0] + Bits(32)(1)) % Bits(32)(ROB_SIZE)
-        self.rob_clean_one(self.L[0])
+        # 使用当前的 L[0] 清理条目
+        entry_idx = self.L[0]
+        self.rob_clean_one(entry_idx)
+
+        # 更新 L 指针（时序写入，下一个周期生效）
+        self.L[0] = (entry_idx + Bits(32)(1)) % Bits(32)(ROB_SIZE)
 
     def log(self):
         log("------- ROB log start -------")
         for i in range(self.size):
             log("Busy = {}, Op_id = ${}$, dest = {}, value {}, expect_value = {}, branch_PC = {}, ID = {}", self.Busy[i],
-                self.Op_id[i], self.dest[i], self.value[i], self.expect_value[i], self.branch_PC[i], self.ID[i])
+                self.Op_id[i], self.dest[i], self.value[i], self.expect_val[i], self.branch_pc_val[i], self.ID[i])
         log("------- ROB log end -------")
 
     @module.combinational
@@ -101,9 +109,9 @@ class ROB(Module):
             # TODO
 
             # commit
-            commit_inst_type = inst_id_to_type(self.inst[self.L[0]])
+            commit_inst_type = inst_id_to_type(self.Op_id[self.L[0]])
             top_ready = (self.L[0] != self.R[0]) & (~self.busy[self.L[0]])
-            predict_failed = ((commit_inst_type == Bits(32)(4)) | (commit_inst_type == Bits(32)(6))) & (self.expect_value[self.L[0]] != self.value[self.L[0]])
+            predict_failed = ((commit_inst_type == Bits(32)(4)) | (commit_inst_type == Bits(32)(6))) & (self.expect_val[self.L[0]] != self.value[self.L[0]])
 
             with Condition(top_ready):
                 Commit_id = self.ID[self.L[0]]
@@ -125,4 +133,4 @@ class ROB(Module):
                 # show to rs
                 rs.rob_id.push(Commit_id)
                 rs.rob_value.push(self.value[self.L[0]])
-                self.pop()
+                self.rob_pop()

@@ -211,7 +211,7 @@ class Fetcher(Module):
         super().__init__({})
 
     @module.combinational
-    def build(self, sram: SRAM, rs, test_part):
+    def build(self, sram: SRAM, rs, rob, test_part):
         we = Bits(1)(0)
         re = ~we
         # re = Bits(1)(1)
@@ -236,6 +236,17 @@ class Fetcher(Module):
         rs.Id.push(inst.id)
 
         rs.inst_order_id.push(address_wire)
+
+        # 推送到 ROB
+        rob.rd.push(inst.rd)
+        rob.rs1.push(inst.rs1)
+        rob.rs2.push(inst.rs2)
+        rob.imm.push(inst.imm)
+        rob.Type.push(inst.Type)
+        rob.Id.push(inst.id)
+        rob.Fetch_id.push(address_wire)
+        rob.expect_value.push(Bits(INST_WIDTH)(0))
+        rob.branch_PC.push(Bits(INST_WIDTH)(0))
 
         rs.async_called()
         test_part.async_called()

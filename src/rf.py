@@ -4,7 +4,7 @@ from const import WORD_WIDTH, ROB_WIDTH
 regTp = Record({
     (0, WORD_WIDTH-1): ('data', Bits),
     (WORD_WIDTH, WORD_WIDTH): ('busy', Bits),
-    (WORD_WIDTH+1, WORD_WIDTH): ('busy', Bits),
+    (WORD_WIDTH+1, WORD_WIDTH + ROB_WIDTH): ('robid', Bits),
 })
 
 class RegFile(Module):
@@ -13,4 +13,4 @@ class RegFile(Module):
         self.data = RegArray(regTp, 32)
 
     def build(self):
-        return self.data, self.busy, self.robid
+        return self.data
