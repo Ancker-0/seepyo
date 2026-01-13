@@ -4,10 +4,10 @@ from assassyn.utils import run_simulator, run_verilator
 
 from src.const import ROB_SIZE, INST_WIDTH
 from toolbox import  RegArrays
-from instruction import Inst, inst_id_to_type
+from instruction import Inst, inst_id_to_type, get_int_val
 
 class ROB(Module):
-    def __init__(self):
+    def __init__(self, robL, robR):
         super().__init__(ports = {
             "rd": Port(Bits(INST_WIDTH)),
             "rs1": Port(Bits(INST_WIDTH)),
@@ -28,10 +28,13 @@ class ROB(Module):
         self.expect_val = RegArrays(Bits(32), ROB_SIZE, self)  # 重命名避免与端口冲突
         self.branch_pc_val = RegArrays(Bits(32), ROB_SIZE, self)  # 重命名避免与端口冲突
         self.ID = RegArrays(Bits(32), ROB_SIZE, self)
-        self.L = RegArrays(Bits(32), 1, self)
-        self.R = RegArrays(Bits(32), 1, self)
+        # self.L = RegArray(Bits(32), 1, [0])
+        # self.R = RegArray(Bits(32), 1, [0])
+        self.L = robL
+        self.R = robR
 
         self.flush_tag = RegArrays(Bits(1), 1, self)
+        self.terminate_flag = RegArrays(Bits(1), 1, self)
 
     def rob_clean_one(self, pos):
         self.busy[pos] = Bits(1)(0)
@@ -48,17 +51,34 @@ class ROB(Module):
 
     def rob_push(self, Op_id, dest, value, ID, expect_value, branch_PC):
         # 更新 R 指针（先读取当前值，计算新值，然后写回）
+        entry = self.R[0]  # 当前 R[0] 就是要分配的条目索引
         new_R = (self.R[0] + Bits(32)(1)) % Bits(32)(ROB_SIZE)
         self.R[0] = new_R
 
-        # 使用更新前的 R[0] 作为索引
-        self.busy[self.R[0]] = Bits(1)(1)
-        self.Op_id[self.R[0]] = Op_id
-        self.dest[self.R[0]] = dest
-        self.value[self.R[0]] = value
-        self.ID[self.R[0]] = ID
-        self.expect_val[self.R[0]] = expect_value
-        self.branch_pc_val[self.R[0]] = branch_PC
+        self.busy[entry] = Bits(1)(1)
+        self.Op_id[entry] = Op_id
+        self.dest[entry] = dest
+        self.value[entry] = value
+        self.ID[entry] = ID
+        self.expect_val[entry] = expect_value
+        self.branch_pc_val[entry] = branch_PC
+        return entry  # 返回分配的条目索引
+
+    def rob_push_store(self, Op_id, dest, value, ID, expect_value, branch_PC):
+        # For store instructions - same as rob_push but sets Busy=0
+        # since stores don't execute in ALU
+        entry = self.R[0]
+        new_R = (self.R[0] + Bits(32)(1)) % Bits(32)(ROB_SIZE)
+        self.R[0] = new_R
+
+        self.busy[entry] = Bits(1)(0)  # Store entries start as not busy
+        self.Op_id[entry] = Op_id
+        self.dest[entry] = dest
+        self.value[entry] = value
+        self.ID[entry] = ID
+        self.expect_val[entry] = expect_value
+        self.branch_pc_val[entry] = branch_PC
+        return entry
 
     def rob_pop(self):
         # 使用当前的 L[0] 清理条目
@@ -69,9 +89,9 @@ class ROB(Module):
         self.L[0] = (entry_idx + Bits(32)(1)) % Bits(32)(ROB_SIZE)
 
     def log(self):
-        log("------- ROB log start -------")
+        log("------- ROB log start ------- L={}, R={}", self.L[0], self.R[0])
         for i in range(self.size):
-            log("Busy = {}, Op_id = ${}$, dest = {}, value {}, expect_value = {}, branch_PC = {}, ID = {}", self.Busy[i],
+            log("Busy = {}, Op_id = ${}$, dest = {}, value {}, expect_value = {}, branch_PC = {}, ID = {}", self.busy[i],
                 self.Op_id[i], self.dest[i], self.value[i], self.expect_val[i], self.branch_pc_val[i], self.ID[i])
         log("------- ROB log end -------")
 
@@ -88,6 +108,7 @@ class ROB(Module):
                 with Condition(port.valid()):
                     port.pop()
 
+        log("Hillo")
         with Condition(~self.flush_tag[0]):
             new_dest = self.rd.valid().select(self.rd.peek(), Bits(32)(0))
             # 如果当前要修改的值和提交要求改的值是同一个地方，就不用改提交的修改了
@@ -100,10 +121,29 @@ class ROB(Module):
                 Fetch_id = self.Fetch_id.pop()
 
                 with Condition((inst.Type == Bits(32)(1)) | (inst.Type == Bits(32)(2))):
+                    log("ROB: Type {}/{}, updating rf.dependence[{}] = {}", inst.Type, inst.id, inst.rd, Fetch_id)
                     rf.update(inst.rd, rf.val[inst.rd], Fetch_id)
                     self.rob_push(inst.id, inst.rd, Bits(32)(0), Fetch_id, expect_value, branch_PC)
                 with Condition(inst.Type == Bits(32)(4)):
                     self.rob_push(inst.id, Bits(32)(0), Bits(32)(0), Fetch_id, expect_value, branch_PC)
+                with Condition(inst.Type == Bits(32)(3)):
+                    # Type S (store) - allocate ROB entry for store instructions
+                    # Check for termination instruction: sb x0, -1(x0)
+                    is_sb = (inst.id == Bits(32)(25))  # sb instruction ID
+                    is_x0_rs1 = (inst.rs1 == Bits(32)(0))
+                    is_x0_rs2 = (inst.rs2 == Bits(32)(0))
+                    imm_val = get_int_val(inst.imm, 11)
+                    is_minus_one = (imm_val == Int(32)(-1))
+
+                    is_terminate = is_sb & is_x0_rs1 & is_x0_rs2 & is_minus_one
+
+                    with Condition(is_terminate):
+                        self.terminate_flag[0] = Bits(1)(1)
+
+                    # Use rob_push_store which sets Busy=0 (stores don't execute in ALU)
+                    self.rob_push_store(inst.id, Bits(32)(0), Bits(32)(0), Fetch_id, expect_value, branch_PC)
+                # Type 0 (invalid) instructions are not pushed to ROB
+                # They represent decoded 0x00000000 or other invalid encodings
 
             # need to deal with ALU so that we can commit
             # TODO
@@ -133,4 +173,14 @@ class ROB(Module):
                 # show to rs
                 rs.rob_id.push(Commit_id)
                 rs.rob_value.push(self.value[self.L[0]])
+
+                # Check for termination
+                with Condition(self.terminate_flag[0]):
+                    log("=== PROGRAM TERMINATION: sb x0, -1(x0) ===")
+                    log("Register dump:")
+                    rf.show()
+                    self.terminate_flag[0] = Bits(1)(0)  # Clear flag
+
                 self.rob_pop()
+
+        self.log()

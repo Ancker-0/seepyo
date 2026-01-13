@@ -76,6 +76,7 @@ class RS(Module):
                             self.Qk[i] = (rf.dependence[inst.rs2] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[inst.rs2])
                             self.A[i] = Bits(32)(0)
                             self.Dest[i] = inst_id
+                            log("RS: Type R entry={}, rd={}, rs1={}, rs2={}, Qj={}, Qk={}", Bits(32)(i), inst.rd, inst.rs1, inst.rs2, self.Qj[i], self.Qk[i])
                         with Condition(inst.Type == Bits(32)(2)): #Type I
                             self.Busy[i] = Bits(1)(1)
                             self.Op_id[i] = inst.id
@@ -94,6 +95,9 @@ class RS(Module):
                             self.Qk[i] = (rf.dependence[inst.rs2] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[inst.rs2])
                             self.A[i] = inst.imm
                             self.Dest[i] = inst_id
+                        # Type S (store) - do not allocate RS entry for stores
+                        # Termination is handled in ROB at commit time
+
                     once_tag = once_tag & self.Busy[i]
 
             # done things for ROB

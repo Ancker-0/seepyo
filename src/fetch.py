@@ -211,7 +211,7 @@ class Fetcher(Module):
         super().__init__({})
 
     @module.combinational
-    def build(self, sram: SRAM, rs, rob, test_part):
+    def build(self, sram: SRAM, rs, rob, test_part, rob_R):
         we = Bits(1)(0)
         re = ~we
         # re = Bits(1)(1)
@@ -235,9 +235,10 @@ class Fetcher(Module):
         rs.Type.push(inst.Type)
         rs.Id.push(inst.id)
 
-        rs.inst_order_id.push(address_wire)
+        # 获取即将分配的 ROB 条目索引
+        rob_entry = rob_R[0]
 
-        # 推送到 ROB
+        # 推送到 ROB - 始终推送以保持 RS 和 ROB 同步
         rob.rd.push(inst.rd)
         rob.rs1.push(inst.rs1)
         rob.rs2.push(inst.rs2)
@@ -248,7 +249,12 @@ class Fetcher(Module):
         rob.expect_value.push(Bits(INST_WIDTH)(0))
         rob.branch_PC.push(Bits(INST_WIDTH)(0))
 
+        # 传递正确的 ROB 条目索引给 RS
+        rs.inst_order_id.push(rob_entry)
+
         rs.async_called()
-        test_part.async_called()
+
+        rob.async_called()  # ROB needs to be driven to execute
+        # test_part.async_called()
 
         return we, re, address_wire, write_wire

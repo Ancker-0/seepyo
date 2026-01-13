@@ -1,4 +1,5 @@
 import os
+import sys as Sys
 
 from assassyn.frontend import *
 from assassyn.backend import elaborate
@@ -19,7 +20,7 @@ class Test_Part(Module):
     @module.combinational
     def build(self, rf, rs):
         rf.update(Bits(32)(6), Bits(32)(113), Bits(32)(0))
-        rf.update(Bits(32)(2), Bits(32)(0), Bits(32)(2))
+        # rf.update(Bits(32)(2), Bits(32)(0), Bits(32)(2))  # This creates incorrect dependence!
         # for i in range(32):
         #     rf.update(Bits(32)(i), Bits(32)(421 & (((i & 1) << 10) - 1)), Bits(32)(2 & ((((i & 1) ^ 1) << 10) - 1)))
 
@@ -35,30 +36,32 @@ def build():
     sys = SysBuilder('seepyo')
     with sys:
         fetcher = Fetcher()
-        init_file = 'test.data'
+        init_file = Sys.argv[1] if len(Sys.argv) >= 2 else 'term_test.data'
         sram = SRAM(INST_WIDTH, 2 ** ADDR_WIDTH, init_file)
 
         driver = Driver()
-        test_part = Test_Part()
-        rf = Register(test_part)
+        # test_part = Test_Part()
+        rf = Register()
         rs = RS()
-        rob = ROB()
+        robL, robR = RegArray(Bits(32), 1, [0]), RegArray(Bits(32), 1, [0])
+        rob = ROB(robL, robR)
         alu = ALU()
 
-        we, re, address_wire, write_wire = fetcher.build(sram, rs, rob, test_part)
+        we, re, address_wire, write_wire = fetcher.build(sram, rs, rob, test_part=None, rob_R=robR)
         sram.build(we, re, address_wire, write_wire)
 
         driver.build(fetcher)
+        rf.build()  # Initialize RF dependence to 0
         rs.build(rf, alu)  # RS 需要引用 ALU 来发射指令
         rob.build(rf, rs)
-        alu.build(rob)
-        test_part.build(rf, rs)
+        alu.build(rob, rs)
+        # test_part.build(rf, rs)
     return sys
 
 def main():
     sys = build()
     resource_path = os.path.join(os.path.dirname(__file__), "..", "data")
-    sim, verilog = elaborate(sys, verbose=True, simulator=True, verilog=True, resource_base=resource_path)
+    sim, verilog = elaborate(sys, verbose=True, simulator=True, verilog=False, resource_base=resource_path)
     output = run_simulator(sim)
 
     for [Id, reg_name] in enumerate(Number_to_Register_Name):
