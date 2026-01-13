@@ -1,0 +1,66 @@
+#!/bin/bash
+
+usage() {
+  echo "Usage: $0 <filename (no .S)>     Generate <filename>.data and <filename>.dump from <filename>.S"
+  echo "       $0 -c                      Clean temporary files"
+  echo "       $0 -h | --help             Show this help message"
+}
+
+gen() {
+  # Assemble the input .S file
+  riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -nostdlib -nostartfiles $1.S -o $1.o -c
+
+  # Link with start.o if it exists, otherwise just link the object file
+  if [ -f start.o ]; then
+    riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -nostdlib -nostartfiles start.o $1.o -o $1.elf -T link.ld
+  else
+    riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -nostdlib -nostartfiles $1.o -o $1.elf -T link.ld
+  fi
+
+  # Generate dump and data files
+  riscv64-unknown-elf-objdump -d $1.elf > $1.dump
+  riscv64-unknown-elf-objcopy -O binary $1.elf $1.bin
+  xxd -p -c 4 $1.bin > $1.data
+
+  echo "Generated: $1.dump, $1.data"
+}
+
+clean-gen() {
+  rm -f *.o *.elf link.ld *.bin
+  echo "Cleaned temporary files"
+}
+
+init() {
+  cat > link.ld <<EOF
+SECTIONS {
+  . = 0x00000000;
+
+  .text : { *(.text*) }
+  .data : { *(.data*) }
+  .bss  : { *(.bss*) }
+}
+
+MEMORY {
+  text (rx)  : ORIGIN = 0x00000000, LENGTH = 4096M
+  data (rw)  : ORIGIN = 0x80000000, LENGTH = 4096M
+}
+EOF
+}
+
+if [ $# -eq 0 ]; then
+  usage
+  exit 1
+fi
+
+case "$1" in
+  -c)
+    clean-gen
+    ;;
+  -h|--help)
+    usage
+    ;;
+  *)
+    init
+    gen "$1"
+    ;;
+esac
