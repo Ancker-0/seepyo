@@ -28,7 +28,7 @@ class ROB(Module):
         self.value = RegArrays(Bits(32), ROB_SIZE, self)
         self.expect_val = RegArrays(Bits(32), ROB_SIZE, self)  # 重命名避免与端口冲突
         self.branch_pc_val = RegArrays(Bits(32), ROB_SIZE, self)  # 重命名避免与端口冲突
-        self.ID = RegArrays(Bits(32), ROB_SIZE, self)
+        self.fetch_id = RegArrays(Bits(32), ROB_SIZE, self)
         # self.L = RegArray(Bits(32), 1, [0])
         # self.R = RegArray(Bits(32), 1, [0])
         self.L = robL
@@ -42,7 +42,7 @@ class ROB(Module):
         self.Op_id[pos] = Bits(32)(0)
         self.dest[pos] = Bits(32)(0)
         self.value[pos] = Bits(32)(0)
-        self.ID[pos] = Bits(32)(0)
+        self.fetch_id[pos] = Bits(32)(0)
         self.expect_val[pos] = Bits(32)(0)
         self.branch_pc_val[pos] = Bits(32)(0)
 
@@ -61,13 +61,13 @@ class ROB(Module):
         self.Op_id[entry] = Op_id
         self.dest[entry] = dest
         self.value[entry] = value
-        self.ID[entry] = ID
+        self.fetch_id[entry] = ID
         self.expect_val[entry] = expect_value
         self.branch_pc_val[entry] = branch_PC
         return entry  # 返回分配的条目索引
 
     def rob_push_store(self, Op_id, dest, value, ID, expect_value, branch_PC):
-        # For store instructions - same as rob_push but sets Busy=0
+        # For store instructions - same as rob_push but sets =0
         # since stores don't execute in ALU
         entry = self.R[0]
         new_R = (self.R[0] + Bits(32)(1)) % Bits(32)(ROB_SIZE)
@@ -77,7 +77,7 @@ class ROB(Module):
         self.Op_id[entry] = Op_id
         self.dest[entry] = dest
         self.value[entry] = value
-        self.ID[entry] = ID
+        self.fetch_id[entry] = ID
         self.expect_val[entry] = expect_value
         self.branch_pc_val[entry] = branch_PC
         return entry
@@ -85,17 +85,24 @@ class ROB(Module):
     def rob_pop(self):
         # 使用当前的 L[0] 清理条目
         entry_idx = self.L[0]
+        log("rob_pop entry {}", self.L[0])
         self.rob_clean_one(entry_idx)
 
         # 更新 L 指针（时序写入，下一个周期生效）
-        self.L[0] = (entry_idx + Bits(32)(1)) % Bits(32)(ROB_SIZE)
+        (self.L & self)[0] <= (entry_idx + Bits(32)(1)) % Bits(32)(ROB_SIZE)
 
     def log(self):
         log("------- ROB log start ------- L={}, R={}", self.L[0], self.R[0])
         for i in range(self.size):
             log("Busy = {}, Op_id = ${}$, dest = {}, value {}, expect_value = {}, branch_PC = {}, ID = {}", self.busy[i],
-                self.Op_id[i], self.dest[i], self.value[i], self.expect_val[i], self.branch_pc_val[i], self.ID[i])
+                self.Op_id[i], self.dest[i], self.value[i], self.expect_val[i], self.branch_pc_val[i], self.fetch_id[i])
         log("------- ROB log end -------")
+
+    def entry_by_fetch_id(self, fetch_id: Bits):
+        ret = Bits(32)(0)
+        for i in range(ROB_SIZE):
+            ret = (self.fetch_id[i] == fetch_id).select(Bits(32)(i), ret)
+        return ret
 
     @module.combinational
     def build(self, rf: Register, rs):
@@ -156,8 +163,8 @@ class ROB(Module):
             predict_failed = ((commit_inst_type == Bits(32)(4)) | (commit_inst_type == Bits(32)(6))) & (self.expect_val[self.L[0]] != self.value[self.L[0]])
 
             with Condition(top_ready):
-                Commit_id = self.ID[self.L[0]]
-                # log("Committing inst id = {}, value = {}", Commit_id, self.value[self.L[0]])
+                Commit_id = self.fetch_id[self.L[0]]
+                log("Committing inst id = {}, value = {}", Commit_id, self.value[self.L[0]])
 
                 # in case of branch mispredict
                 with Condition(predict_failed):

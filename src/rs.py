@@ -17,7 +17,7 @@ class RS(Module):
             "Type": Port(Bits(INST_WIDTH)),
             "Id": Port(Bits(INST_WIDTH)),
             "flush_tag": Port(Bits(1)),
-            "inst_order_id": Port(Bits(INST_WIDTH)),
+            "fetch_id": Port(Bits(INST_WIDTH)),
 
             "rob_id": Port(Bits(INST_WIDTH)),
             "rob_value": Port(Bits(INST_WIDTH)),
@@ -61,7 +61,7 @@ class RS(Module):
             # done things for RS
             with Condition(self.rd.valid()):
                 inst = Inst(self.rd.pop(), self.rs1.pop(), self.rs2.pop(), self.imm.pop(), self.Type.pop(), self.Id.pop())
-                inst_id = self.inst_order_id.pop()
+                fetch_id = self.fetch_id.pop()
 
                 once_tag = Bits(1)(1)
                 for i in range(self.size):
@@ -75,7 +75,7 @@ class RS(Module):
                             self.Qj[i] = (rf.dependence[inst.rs1] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[inst.rs1])
                             self.Qk[i] = (rf.dependence[inst.rs2] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[inst.rs2])
                             self.A[i] = Bits(32)(0)
-                            self.Dest[i] = inst_id
+                            self.Dest[i] = fetch_id
                             # log("RS: Type R entry={}, rd={}, rs1={}, rs2={}, Qj={}, Qk={}", Bits(32)(i), inst.rd, inst.rs1, inst.rs2, self.Qj[i], self.Qk[i])
                         with Condition(inst.Type == Bits(32)(2)): #Type I
                             inst.show()
@@ -86,7 +86,7 @@ class RS(Module):
                             self.Qj[i] = (rf.dependence[inst.rs1] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[inst.rs1])
                             self.Qk[i] = Bits(32)(0)
                             self.A[i] = inst.imm
-                            self.Dest[i] = inst_id
+                            self.Dest[i] = fetch_id
                         with Condition(inst.Type == Bits(32)(4)): # Type B
                             self.Busy[i] = Bits(1)(1)
                             self.Op_id[i] = inst.id
@@ -95,7 +95,7 @@ class RS(Module):
                             self.Qj[i] = (rf.dependence[inst.rs1] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[inst.rs1])
                             self.Qk[i] = (rf.dependence[inst.rs2] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[inst.rs2])
                             self.A[i] = inst.imm
-                            self.Dest[i] = inst_id
+                            self.Dest[i] = fetch_id
                         # Type S (store) - do not allocate RS entry for stores
                         # Termination is handled in ROB at commit time
 

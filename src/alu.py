@@ -2,6 +2,7 @@ from assassyn.frontend import *
 from assassyn.backend import elaborate
 from assassyn.utils import run_simulator, run_verilator
 
+from rob import ROB
 from src.const import ROB_SIZE, INST_WIDTH
 
 class ALU(Module):
@@ -14,12 +15,12 @@ class ALU(Module):
         })
 
     @module.combinational
-    def build(self, rob, rs):
+    def build(self, rob: ROB, rs):
         with Condition(self.op_id.valid()):
             op_id = self.op_id.pop()
             vj = self.vj.pop()
             vk = self.vk.pop()
-            rob_entry_id = self.rob_id.pop()  # ROB 条目号（0-7）
+            fetch_id = self.rob_id.pop()  # ROB 条目号（0-7）
 
             # 实现 ALU 所有操作 (Type R: 1-10, Type I: 11-19, lui: 37)
             result = op_id.case({
@@ -36,13 +37,14 @@ class ALU(Module):
                 Bits(32)(37): vk << Bits(32)(12),  # lui
                 None: Bits(32)(0)
             })
+            log("ALU: op_id={}, vj={}, vk={}, result={}, rob_entry={}", op_id, vj, vk, result, fetch_id)
 
             # 直接写回 ROB[rob_entry_id]（不需要遍历）
-            rob.value[rob_entry_id] = result
-            rob.busy[rob_entry_id] = Bits(1)(0)  # 标记为完成
+            rob_id = rob.entry_by_fetch_id(fetch_id)
+            rob.value[rob_id] = result
+            rob.busy[rob_id] = Bits(1)(0)  # 标记为完成
 
             # 广播到 RS，用于结果转发（result forwarding）
             # rs.rob_id.push(rob_entry_id)
             # rs.rob_value.push(result)
 
-            log("ALU: op_id={}, vj={}, vk={}, result={}, rob_entry={}", op_id, vj, vk, result, rob_entry_id)

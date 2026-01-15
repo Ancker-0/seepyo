@@ -222,7 +222,8 @@ class Fetcher(Module):
         (tick & self)[0] <= tick[0] + Bits(32)(1)
 
         log("tick = {}", tick[0])
-        address_wire = tick[0]
+        address_wire = RegArray(Bits(32), 1, [0])
+        (address_wire & self)[0] <= address_wire[0] + Bits(32)(1)
         write_wire = Bits(INST_WIDTH)(0)
 
         log('Got inst {:X}', sram.dout[0])
@@ -237,9 +238,7 @@ class Fetcher(Module):
             rs.Id.push(inst.id)
             # 传递正确的 ROB 条目索引给 RS
 
-            # 获取即将分配的 ROB 条目索引
-            rob_entry = rob_R[0]
-            rs.inst_order_id.push(rob_entry)
+            rs.fetch_id.push(tick[0])
 
             # 推送到 ROB - 始终推送以保持 RS 和 ROB 同步
             rob.rd.push(inst.rd)
@@ -248,7 +247,7 @@ class Fetcher(Module):
             rob.imm.push(inst.imm)
             rob.Type.push(inst.Type)
             rob.Id.push(inst.id)
-            rob.Fetch_id.push(address_wire)
+            rob.Fetch_id.push(tick[0])
             rob.expect_value.push(Bits(INST_WIDTH)(0))
             rob.branch_PC.push(Bits(INST_WIDTH)(0))
 
@@ -257,4 +256,4 @@ class Fetcher(Module):
         rob.async_called()  # ROB needs to be driven to execute
         # test_part.async_called()
 
-        return we, re, address_wire, write_wire
+        return we, re, address_wire[0], write_wire
