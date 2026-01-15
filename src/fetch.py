@@ -70,7 +70,7 @@ def decode_typeI(v: Bits):
     rd = get_number_range(v, 7, 11)
     funct3 = get_number_range(v, 12, 14)
     rs1 = get_number_range(v, 15, 19)
-    imm11_0 = get_number_range(v, 20, 31)
+    imm11_0 = get_number_range_multiple(v, [20, 31], sext=True)
     imm4_0 = get_number_range(v, 20, 24)
 
     # 对于移位立即数指令，需要检查funct7字段
@@ -145,7 +145,7 @@ def decode_typeB(v: Bits):
     rs1 = get_number_range(v, 15, 19)
     rs2 = get_number_range(v, 20, 24)
     funct3 = get_number_range(v, 12, 14)
-    imm = get_number_range_multiple(v, [1, 0], [8, 11], [25, 30], [7, 7], [31, 31])
+    imm = get_number_range_multiple(v, [1, 0], [8, 11], [25, 30], [7, 7], [31, 31], sext=True)
 
     rd = Bits(INST_WIDTH)(0)
     Id = Bits(INST_WIDTH)(0)
