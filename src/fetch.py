@@ -27,6 +27,7 @@ def get_number_range_multiple(v: Bits, *args, **kwargs):# can't use [0,0]
         else:
             sz += cov[0]
     if sext:
+        log("SEXT {} {} {}", tmp, (Bits(32)(0) - (v & (Bits(32)(1) << Bits(32)(sz - 1)))), tmp | (Bits(32)(0) - (v & (Bits(32)(1) << Bits(32)(sz - 1)))))
         return tmp | (Bits(32)(0) - (v & (Bits(32)(1) << Bits(32)(sz - 1))))
     return tmp
 
@@ -139,6 +140,7 @@ def decode_typeS(v: Bits):
 
     Type = Bits(INST_WIDTH)(3)
 
+    log("decode typeS imm = {}", imm)
     return Inst(rd, rs1, rs2, imm, Type, Id)
 
 def decode_typeB(v: Bits):
@@ -219,40 +221,42 @@ class Fetcher(Module):
     def build(self, sram: SRAM, rs: RS, rob: ROB, test_part, rob_R):
         we = Bits(1)(0)
         re = ~we
-        # re = Bits(1)(1)
+        last_read = RegArray(Bits(32), 1, [0xFFFFFFFF])
+        address_wire = RegArray(Bits(32), 1, [0])
+        write_wire = Bits(INST_WIDTH)(0)
 
         tick = RegArray(Bits(32), 1)
         (tick & self)[0] <= tick[0] + Bits(32)(1)
 
         log("tick = {}", tick[0])
-        address_wire = RegArray(Bits(32), 1, [0])
-        (address_wire & self)[0] <= address_wire[0] + Bits(32)(1)
-        write_wire = Bits(INST_WIDTH)(0)
 
-        log('Got inst {:X}', sram.dout[0])
-        inst = decode_inst(sram.dout[0])
-        inst.show()
-        with Condition(inst.id != Bits(INST_WIDTH)(0)):
-            rs.rd.push(inst.rd)
-            rs.rs1.push(inst.rs1)
-            rs.rs2.push(inst.rs2)
-            rs.imm.push(inst.imm)
-            rs.Type.push(inst.Type)
-            rs.Id.push(inst.id)
-            # 传递正确的 ROB 条目索引给 RS
+        (last_read & self)[0] <= address_wire[0]
+        with Condition(address_wire[0] == last_read[0]):
+            log('Got inst {:X}', sram.dout[0])
+            inst = decode_inst(sram.dout[0])
+            inst.show()
+            with Condition((inst.id != Bits(INST_WIDTH)(0)) & ~rob.qfull() & rs.avail()):
+                (address_wire & self)[0] <= address_wire[0] + Bits(32)(1)
+                rs.rd.push(inst.rd)
+                rs.rs1.push(inst.rs1)
+                rs.rs2.push(inst.rs2)
+                rs.imm.push(inst.imm)
+                rs.Type.push(inst.Type)
+                rs.Id.push(inst.id)
+                # 传递正确的 ROB 条目索引给 RS
 
-            rs.fetch_id.push(tick[0])
+                rs.fetch_id.push(tick[0])
 
-            # 推送到 ROB - 始终推送以保持 RS 和 ROB 同步
-            rob.rd.push(inst.rd)
-            rob.rs1.push(inst.rs1)
-            rob.rs2.push(inst.rs2)
-            rob.imm.push(inst.imm)
-            rob.Type.push(inst.Type)
-            rob.Id.push(inst.id)
-            rob.Fetch_id.push(tick[0])
-            rob.expect_value.push(Bits(INST_WIDTH)(0))
-            rob.branch_PC.push(Bits(INST_WIDTH)(0))
+                # 推送到 ROB - 始终推送以保持 RS 和 ROB 同步
+                rob.rd.push(inst.rd)
+                rob.rs1.push(inst.rs1)
+                rob.rs2.push(inst.rs2)
+                rob.imm.push(inst.imm)
+                rob.Type.push(inst.Type)
+                rob.Id.push(inst.id)
+                rob.Fetch_id.push(tick[0])
+                rob.expect_value.push(Bits(INST_WIDTH)(0))
+                rob.branch_PC.push(Bits(INST_WIDTH)(0))
 
         rs.async_called()
 

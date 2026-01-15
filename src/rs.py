@@ -47,6 +47,12 @@ class RS(Module):
         for i in range(self.size):
             log("Busy = {}, Op = ${}$, Vj = {}, Vk = {}, Qj = {}, Qk = {}, A = {}, Dest = {}", self.Busy[i], self.Op_id[i], self.Vj[i], self.Vk[i], self.Qj[i], self.Qk[i], self.A[i], self.Dest[i])
         log("------- RS log end -------")
+    
+    def avail(self):
+        ret = Bits(1)(0)
+        for i in range(self.size):
+            ret = ret | ~self.Busy[i]
+        return ret
 
     @module.combinational
     def build(self, rf, alu):

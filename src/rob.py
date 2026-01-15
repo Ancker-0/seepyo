@@ -92,6 +92,11 @@ class ROB(Module):
 
         # 更新 L 指针（时序写入，下一个周期生效）
         (self.L & self)[0] <= (entry_idx + Bits(32)(1)) % Bits(32)(ROB_SIZE)
+    
+    def qfull(self):
+        # For some technical reasons, the modification from fetcher takes two cycles to take effect in rob,
+        # which means we need to leave one space for this.
+        return ((self.R[0] + Bits(32)(1)) % Bits(32)(ROB_SIZE) == self.L[0]) | ((self.R[0] + Bits(32)(2)) % Bits(32)(ROB_SIZE) == self.L[0])
 
     def log(self):
         log("------- ROB log start ------- L={}, R={}", self.L[0], self.R[0])
