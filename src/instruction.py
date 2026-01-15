@@ -176,7 +176,7 @@ class Inst:
         with Condition(self.id == Bits(32)(0)):
             log("Invalid Inst")
         for index, name in Id_to_Instruction_Name.items():
-            with Condition(index == self.id):
+            with Condition(Bits(32)(index) == self.id):
                 # log(f"found id = {{}}, inst = {name}", index)
                 with Condition(self.Type == Bits(32)(1)):
                     log(f"inst = {name}, rd = ~{{}}~, rs1 = ~{{}}~, rs2 = ~{{}}~ --- [Type R]", self.rd, self.rs1, self.rs2)
