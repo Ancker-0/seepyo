@@ -20,7 +20,20 @@ gen() {
   # Generate dump and data files
   riscv64-unknown-elf-objdump -d $1.elf > $1.dump
   riscv64-unknown-elf-objcopy -O binary $1.elf $1.bin
-  xxd -p -c 4 $1.bin > $1.data
+
+  # Convert binary to hex with correct byte order (little-endian to hex string)
+  python3 -c "
+import sys
+with open('$1.bin', 'rb') as f:
+    while True:
+        data = f.read(4)
+        if len(data) < 4:
+            break
+        # Convert bytes to int (little-endian)
+        val = int.from_bytes(data, byteorder='little')
+        # Output as 8-char hex string
+        print(f'{val:08x}')
+" > $1.data
 
   echo "Generated: $1.dump, $1.data"
 }
