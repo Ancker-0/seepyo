@@ -61,6 +61,7 @@ class RS(Module):
             # done things for RS
             with Condition(self.rd.valid()):
                 inst = Inst(self.rd.pop(), self.rs1.pop(), self.rs2.pop(), self.imm.pop(), self.Type.pop(), self.Id.pop())
+                inst.show()
                 fetch_id = self.fetch_id.pop()
 
                 once_tag = Bits(1)(1)
@@ -78,7 +79,6 @@ class RS(Module):
                             self.Dest[i] = fetch_id
                             # log("RS: Type R entry={}, rd={}, rs1={}, rs2={}, Qj={}, Qk={}", Bits(32)(i), inst.rd, inst.rs1, inst.rs2, self.Qj[i], self.Qk[i])
                         with Condition(inst.Type == Bits(32)(2)): #Type I
-                            inst.show()
                             self.Busy[i] = Bits(1)(1)
                             self.Op_id[i] = inst.id
                             self.Vj[i] = (rf.dependence[inst.rs1] == Bits(32)(0)).select(rf.val[inst.rs1], Bits(32)(0))

@@ -16,15 +16,18 @@ def get_number_range(v: Bits, l: int, r: int):
         tmp &= (Bits(INST_WIDTH)(1) << Bits(INST_WIDTH)(sz)) - Bits(INST_WIDTH)(1)
     return tmp
 
-def get_number_range_multiple(v: Bits, *args):# can't use [0,0]
+def get_number_range_multiple(v: Bits, *args, **kwargs):# can't use [0,0]
     sz = 0
     tmp = Bits(INST_WIDTH)(0)
+    sext = kwargs.get('sext') or False
     for cov in args:
         if cov[1] > 0:
             tmp += (get_number_range(v, cov[0], cov[1]) << Bits(INST_WIDTH)(sz))
             sz += cov[1] - cov[0] + 1
         else:
             sz += cov[0]
+    if sext:
+        return tmp | (Bits(32)(0) - (v & (Bits(32)(1) << Bits(32)(sz - 1))))
     return tmp
 
 def decode_typeR(v: Bits):
@@ -123,7 +126,7 @@ def decode_typeS(v: Bits):
     rs2 = get_number_range(v, 20, 24)
     funct3 = get_number_range(v, 12, 14)
     rd = Bits(INST_WIDTH)(0)
-    imm = get_number_range_multiple(v, [7, 11], [25, 31])
+    imm = get_number_range_multiple(v, [7, 11], [25, 31], sext = True)
 
     Id = Bits(INST_WIDTH)(0)
 

@@ -29,13 +29,13 @@ class ROB(Module):
         self.expect_val = RegArrays(Bits(32), ROB_SIZE, self)  # 重命名避免与端口冲突
         self.branch_pc_val = RegArrays(Bits(32), ROB_SIZE, self)  # 重命名避免与端口冲突
         self.fetch_id = RegArrays(Bits(32), ROB_SIZE, self)
+        self.is_terminate = RegArrays(Bits(1), ROB_SIZE, self)
         # self.L = RegArray(Bits(32), 1, [0])
         # self.R = RegArray(Bits(32), 1, [0])
         self.L = robL
         self.R = robR
 
         self.flush_tag = RegArrays(Bits(1), 1, self)
-        self.terminate_flag = RegArrays(Bits(1), 1, self)
 
     def rob_clean_one(self, pos):
         self.busy[pos] = Bits(1)(0)
@@ -66,12 +66,13 @@ class ROB(Module):
         self.branch_pc_val[entry] = branch_PC
         return entry  # 返回分配的条目索引
 
-    def rob_push_store(self, Op_id, dest, value, ID, expect_value, branch_PC):
+    def rob_push_store(self, Op_id, dest, value, ID, expect_value, branch_PC, is_terminate):
         # For store instructions - same as rob_push but sets =0
         # since stores don't execute in ALU
         entry = self.R[0]
         new_R = (self.R[0] + Bits(32)(1)) % Bits(32)(ROB_SIZE)
         self.R[0] = new_R
+        log("store pushed to {}", entry)
 
         self.busy[entry] = Bits(1)(0)  # Store entries start as not busy
         self.Op_id[entry] = Op_id
@@ -80,6 +81,7 @@ class ROB(Module):
         self.fetch_id[entry] = ID
         self.expect_val[entry] = expect_value
         self.branch_pc_val[entry] = branch_PC
+        self.is_terminate[entry] = is_terminate
         return entry
 
     def rob_pop(self):
@@ -94,8 +96,9 @@ class ROB(Module):
     def log(self):
         log("------- ROB log start ------- L={}, R={}", self.L[0], self.R[0])
         for i in range(self.size):
-            log("Busy = {}, Op_id = ${}$, dest = {}, value {}, expect_value = {}, branch_PC = {}, ID = {}", self.busy[i],
-                self.Op_id[i], self.dest[i], self.value[i], self.expect_val[i], self.branch_pc_val[i], self.fetch_id[i])
+            log("Busy = {}, Op_id = ${}$, dest = {}, value {}, expect_value = {}, branch_PC = {}, ID = {}, term = {}", self.busy[i],
+                self.Op_id[i], self.dest[i], self.value[i], self.expect_val[i], self.branch_pc_val[i], self.fetch_id[i],
+                self.is_terminate[i])
         log("------- ROB log end -------")
 
     def entry_by_fetch_id(self, fetch_id: Bits):
@@ -137,20 +140,9 @@ class ROB(Module):
                     self.rob_push(inst.id, Bits(32)(0), Bits(32)(0), Fetch_id, expect_value, branch_PC)
                 with Condition(inst.Type == Bits(32)(3)):
                     # Type S (store) - allocate ROB entry for store instructions
-                    # Check for termination instruction: sb x0, -1(x0)
-                    is_sb = (inst.id == Bits(32)(25))  # sb instruction ID
-                    is_x0_rs1 = (inst.rs1 == Bits(32)(0))
-                    is_x0_rs2 = (inst.rs2 == Bits(32)(0))
-                    imm_val = get_int_val(inst.imm, 11)
-                    is_minus_one = (imm_val == Int(32)(-1))
-
-                    is_terminate = is_sb & is_x0_rs1 & is_x0_rs2 & is_minus_one
-
-                    with Condition(is_terminate):
-                        self.terminate_flag[0] = Bits(1)(1)
-
                     # Use rob_push_store which sets Busy=0 (stores don't execute in ALU)
-                    self.rob_push_store(inst.id, Bits(32)(0), Bits(32)(0), Fetch_id, expect_value, branch_PC)
+                    is_terminate = (inst.id == Bits(32)(25)) & (inst.rs1 == Bits(32)(0)) & (inst.rs2 == Bits(32)(0)) & (inst.imm == Bits(32)(0xFFFFFFFF))
+                    self.rob_push_store(inst.id, Bits(32)(0), Bits(32)(0), Fetch_id, expect_value, branch_PC, is_terminate)
                 # Type 0 (invalid) instructions are not pushed to ROB
                 # They represent decoded 0x00000000 or other invalid encodings
 
@@ -177,18 +169,18 @@ class ROB(Module):
                     dest = self.dest[self.L[0]]
                     with Condition(dest != new_dest):
                         with Condition((rf.dependence[dest] == Commit_id)):
-                            rf.update(dest, self.dest[self.L[0]], Bits(32)(0))
+                            rf.update(dest, self.value[self.L[0]], Bits(32)(0))
+                            log("commit rf[{}] = {}", dest, self.value[self.L[0]])
 
                 # show to rs
                 rs.rob_id.push(Commit_id)
                 rs.rob_value.push(self.value[self.L[0]])
 
                 # Check for termination
-                with Condition(self.terminate_flag[0]):
+                with Condition(self.is_terminate[self.L[0]]):
                     log("=== PROGRAM TERMINATION: sb x0, -1(x0) ===")
                     log("Register dump:")
                     rf.show()
-                    self.terminate_flag[0] = Bits(1)(0)  # Clear flag
 
                 self.rob_pop()
 

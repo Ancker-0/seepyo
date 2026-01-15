@@ -25,15 +25,24 @@ class ALU(Module):
             # 实现 ALU 所有操作 (Type R: 1-10, Type I: 11-19, lui: 37)
             result = op_id.case({
                 Bits(32)(1): vj + vk,      # add, addi
+                Bits(32)(11): vj + vk,      # add, addi
                 Bits(32)(2): vj - vk,      # sub
                 Bits(32)(3): vj & vk,      # and, andi
+                Bits(32)(12): vj & vk,      # and, andi
                 Bits(32)(4): vj | vk,      # or, ori
+                Bits(32)(13): vj | vk,      # or, ori
                 Bits(32)(5): vj ^ vk,      # xor, xori
+                Bits(32)(14): vj ^ vk,      # xor, xori
                 Bits(32)(6): vj << vk,     # sll, slli
+                Bits(32)(15): vj << vk,     # sll, slli
                 Bits(32)(7): vj >> vk,     # srl, srli
+                Bits(32)(16): vj >> vk,     # srl, srli
                 Bits(32)(8): (vj.bitcast(Int(32)) >> vk).bitcast(Bits(32)),  # sra, srai
+                Bits(32)(17): (vj.bitcast(Int(32)) >> vk).bitcast(Bits(32)),  # sra, srai
                 Bits(32)(9): (vj.bitcast(Int(32)) < vk.bitcast(Int(32))).zext(Bits(32)),  # slt, slti
+                Bits(32)(18): (vj.bitcast(Int(32)) < vk.bitcast(Int(32))).zext(Bits(32)),  # slt, slti
                 Bits(32)(10): (vj < vk).zext(Bits(32)),  # sltu, sltiu
+                Bits(32)(19): (vj < vk).zext(Bits(32)),  # sltu, sltiu
                 Bits(32)(37): vk << Bits(32)(12),  # lui
                 None: Bits(32)(0)
             })
