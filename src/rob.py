@@ -50,14 +50,14 @@ class ROB(Module):
         for i in range(ROB_SIZE):
             self.rob_clean_one(i)
 
-    def rob_push(self, Op_id, dest, value, ID, expect_value, branch_PC):
+    def rob_push(self, Op_id, dest, value, ID, expect_value, branch_PC, busy: bool = True):
         # 更新 R 指针（先读取当前值，计算新值，然后写回）
         entry = self.R[0]  # 当前 R[0] 就是要分配的条目索引
         new_R = (self.R[0] + Bits(32)(1)) % Bits(32)(ROB_SIZE)
         self.R[0] = new_R
         log("pushed to {}", entry)
 
-        self.busy[entry] = Bits(1)(1)
+        self.busy[entry] = Bits(1)(busy)
         self.Op_id[entry] = Op_id
         self.dest[entry] = dest
         self.value[entry] = value
@@ -148,6 +148,9 @@ class ROB(Module):
                     # Use rob_push_store which sets Busy=0 (stores don't execute in ALU)
                     is_terminate = (inst.id == Bits(32)(25)) & (inst.rs1 == Bits(32)(0)) & (inst.rs2 == Bits(32)(0)) & (inst.imm == Bits(32)(0xFFFFFFFF))
                     self.rob_push_store(inst.id, Bits(32)(0), Bits(32)(0), Fetch_id, expect_value, branch_PC, is_terminate)
+                with Condition(inst.Type == Bits(32)(5)):  # type-J: only jal
+                    rf.update(inst.rd, inst.imm, Fetch_id)
+                    self.rob_push(inst.id, inst.rd, inst.imm, Fetch_id, expect_value, branch_PC, busy=False)
                 # Type 0 (invalid) instructions are not pushed to ROB
                 # They represent decoded 0x00000000 or other invalid encodings
 
