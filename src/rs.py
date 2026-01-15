@@ -65,9 +65,9 @@ class RS(Module):
 
                 once_tag = Bits(1)(1)
                 for i in range(self.size):
-                    with Condition(once_tag & (~self.Busy[i])): # Type R
+                    with Condition(once_tag & (~self.Busy[i])):
                         #now work with different Instruction
-                        with Condition(inst.Type == Bits(32)(1)):
+                        with Condition(inst.Type == Bits(32)(1)): # Type R
                             self.Busy[i] = Bits(1)(1)
                             self.Op_id[i] = inst.id
                             self.Vj[i] = (rf.dependence[inst.rs1] == Bits(32)(0)).select(rf.val[inst.rs1], Bits(32)(0))
@@ -76,12 +76,13 @@ class RS(Module):
                             self.Qk[i] = (rf.dependence[inst.rs2] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[inst.rs2])
                             self.A[i] = Bits(32)(0)
                             self.Dest[i] = inst_id
-                            log("RS: Type R entry={}, rd={}, rs1={}, rs2={}, Qj={}, Qk={}", Bits(32)(i), inst.rd, inst.rs1, inst.rs2, self.Qj[i], self.Qk[i])
+                            # log("RS: Type R entry={}, rd={}, rs1={}, rs2={}, Qj={}, Qk={}", Bits(32)(i), inst.rd, inst.rs1, inst.rs2, self.Qj[i], self.Qk[i])
                         with Condition(inst.Type == Bits(32)(2)): #Type I
+                            inst.show()
                             self.Busy[i] = Bits(1)(1)
                             self.Op_id[i] = inst.id
                             self.Vj[i] = (rf.dependence[inst.rs1] == Bits(32)(0)).select(rf.val[inst.rs1], Bits(32)(0))
-                            self.Vk[i] = Bits(32)(0)
+                            self.Vk[i] = inst.imm  # Use imm as the second operand
                             self.Qj[i] = (rf.dependence[inst.rs1] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[inst.rs1])
                             self.Qk[i] = Bits(32)(0)
                             self.A[i] = inst.imm

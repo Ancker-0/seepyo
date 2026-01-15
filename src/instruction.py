@@ -3,6 +3,7 @@ from dis import Instruction
 from assassyn.frontend import *
 from assassyn.backend import elaborate
 from assassyn.utils import run_simulator, run_verilator
+from const import INST_WIDTH
 
 Id_to_Instruction_Name = {
     1: "add",

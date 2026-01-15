@@ -2,6 +2,7 @@ from assassyn.frontend import *
 from assassyn.backend import elaborate
 from assassyn.utils import run_simulator, run_verilator
 
+from register import Register
 from src.const import ROB_SIZE, INST_WIDTH
 from toolbox import  RegArrays
 from instruction import Inst, inst_id_to_type, get_int_val
@@ -54,6 +55,7 @@ class ROB(Module):
         entry = self.R[0]  # 当前 R[0] 就是要分配的条目索引
         new_R = (self.R[0] + Bits(32)(1)) % Bits(32)(ROB_SIZE)
         self.R[0] = new_R
+        log("pushed to {}", entry)
 
         self.busy[entry] = Bits(1)(1)
         self.Op_id[entry] = Op_id
@@ -96,7 +98,7 @@ class ROB(Module):
         log("------- ROB log end -------")
 
     @module.combinational
-    def build(self, rf, rs):
+    def build(self, rf: Register, rs):
         with Condition(self.flush_tag[0]):
             log("branch mispredict happened, flushing ROB and rf")
             self.L[0] = Bits(32)(0)
@@ -108,7 +110,6 @@ class ROB(Module):
                 with Condition(port.valid()):
                     port.pop()
 
-        log("Hillo")
         with Condition(~self.flush_tag[0]):
             new_dest = self.rd.valid().select(self.rd.peek(), Bits(32)(0))
             # 如果当前要修改的值和提交要求改的值是同一个地方，就不用改提交的修改了
@@ -116,6 +117,7 @@ class ROB(Module):
             with Condition(self.rd.valid()):
                 # done things for ROB
                 inst = Inst(self.rd.pop(), self.rs1.pop(), self.rs2.pop(), self.imm.pop(), self.Type.pop(), self.Id.pop())
+                inst.show()
                 expect_value = self.expect_value.pop()
                 branch_PC = self.branch_PC.pop()
                 Fetch_id = self.Fetch_id.pop()

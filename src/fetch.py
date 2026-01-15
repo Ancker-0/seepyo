@@ -4,6 +4,8 @@ from assassyn.utils import run_simulator, run_verilator
 
 from instruction import *
 from const import INST_WIDTH, ADDR_WIDTH
+from rob import ROB
+from rs import RS
 
 
 def get_number_range(v: Bits, l: int, r: int):
@@ -211,7 +213,7 @@ class Fetcher(Module):
         super().__init__({})
 
     @module.combinational
-    def build(self, sram: SRAM, rs, rob, test_part, rob_R):
+    def build(self, sram: SRAM, rs: RS, rob: ROB, test_part, rob_R):
         we = Bits(1)(0)
         re = ~we
         # re = Bits(1)(1)
@@ -223,34 +225,32 @@ class Fetcher(Module):
         address_wire = tick[0]
         write_wire = Bits(INST_WIDTH)(0)
 
-        val = RegArray(Bits(32), 1)
-        (val & self)[0] <= sram.dout[0]
-        log('Got inst {}', val[0])
-
+        log('Got inst {:X}', sram.dout[0])
         inst = decode_inst(sram.dout[0])
-        rs.rd.push(inst.rd)
-        rs.rs1.push(inst.rs1)
-        rs.rs2.push(inst.rs2)
-        rs.imm.push(inst.imm)
-        rs.Type.push(inst.Type)
-        rs.Id.push(inst.id)
+        inst.show()
+        with Condition(inst.id != Bits(INST_WIDTH)(0)):
+            rs.rd.push(inst.rd)
+            rs.rs1.push(inst.rs1)
+            rs.rs2.push(inst.rs2)
+            rs.imm.push(inst.imm)
+            rs.Type.push(inst.Type)
+            rs.Id.push(inst.id)
+            # 传递正确的 ROB 条目索引给 RS
 
-        # 获取即将分配的 ROB 条目索引
-        rob_entry = rob_R[0]
+            # 获取即将分配的 ROB 条目索引
+            rob_entry = rob_R[0]
+            rs.inst_order_id.push(rob_entry)
 
-        # 推送到 ROB - 始终推送以保持 RS 和 ROB 同步
-        rob.rd.push(inst.rd)
-        rob.rs1.push(inst.rs1)
-        rob.rs2.push(inst.rs2)
-        rob.imm.push(inst.imm)
-        rob.Type.push(inst.Type)
-        rob.Id.push(inst.id)
-        rob.Fetch_id.push(address_wire)
-        rob.expect_value.push(Bits(INST_WIDTH)(0))
-        rob.branch_PC.push(Bits(INST_WIDTH)(0))
-
-        # 传递正确的 ROB 条目索引给 RS
-        rs.inst_order_id.push(rob_entry)
+            # 推送到 ROB - 始终推送以保持 RS 和 ROB 同步
+            rob.rd.push(inst.rd)
+            rob.rs1.push(inst.rs1)
+            rob.rs2.push(inst.rs2)
+            rob.imm.push(inst.imm)
+            rob.Type.push(inst.Type)
+            rob.Id.push(inst.id)
+            rob.Fetch_id.push(address_wire)
+            rob.expect_value.push(Bits(INST_WIDTH)(0))
+            rob.branch_PC.push(Bits(INST_WIDTH)(0))
 
         rs.async_called()
 

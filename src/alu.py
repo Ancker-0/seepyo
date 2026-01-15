@@ -42,7 +42,7 @@ class ALU(Module):
             rob.busy[rob_entry_id] = Bits(1)(0)  # 标记为完成
 
             # 广播到 RS，用于结果转发（result forwarding）
-            rs.rob_id.push(rob_entry_id)
-            rs.rob_value.push(result)
+            # rs.rob_id.push(rob_entry_id)
+            # rs.rob_value.push(result)
 
             log("ALU: op_id={}, vj={}, vk={}, result={}, rob_entry={}", op_id, vj, vk, result, rob_entry_id)
