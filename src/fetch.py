@@ -2,6 +2,7 @@ from assassyn.frontend import *
 from assassyn.backend import elaborate
 from assassyn.utils import run_simulator, run_verilator
 
+from branch import branch_predict
 from instruction import *
 from const import INST_WIDTH, ADDR_WIDTH
 from rob import ROB
@@ -248,6 +249,9 @@ class Fetcher(Module):
 
                 rs.fetch_id.push(tick[0])
 
+                expect_value = (inst.Type == Bits(32)(4)).select(branch_predict(address_wire[0] << Bits(32)(2), inst.imm), Bits(1)(0))
+                otherPC = (~expect_value).select((address_wire[0] << Bits(32)(2)) + inst.imm, (address_wire[0] << Bits(32)(2)) + Bits(32)(4))
+
                 # 推送到 ROB - 始终推送以保持 RS 和 ROB 同步
                 rob.rd.push(inst.rd)
                 rob.rs1.push(inst.rs1)
@@ -256,9 +260,9 @@ class Fetcher(Module):
                 rob.Type.push(inst.Type)
                 rob.Id.push(inst.id)
                 rob.Fetch_id.push(tick[0])
-                rob.expect_value.push(Bits(INST_WIDTH)(0))
-                rob.branch_PC.push(Bits(INST_WIDTH)(0))
-            
+                rob.expect_value.push(expect_value.bitcast(Bits(32)))
+                rob.branch_PC.push(otherPC)
+
             with Condition(instJal):
                 rob.rd.push(inst.rd)
                 rob.rs1.push(inst.rs1)  # useless

@@ -121,18 +121,18 @@ Id_Type_Map = {
     Bits(32)(26): Bits(32)(3),
     Bits(32)(27): Bits(32)(3),
 
-    Bits(32)(28): Bits(32)(4),
+    Bits(32)(28): Bits(32)(4),  # type-B
     Bits(32)(29): Bits(32)(4),
     Bits(32)(30): Bits(32)(4),
     Bits(32)(31): Bits(32)(4),
     Bits(32)(32): Bits(32)(4),
     Bits(32)(33): Bits(32)(4),
 
-    Bits(32)(34): Bits(32)(5),
+    Bits(32)(34): Bits(32)(5),  # type-J
 
     Bits(32)(35): Bits(32)(2),
 
-    Bits(32)(36): Bits(32)(6),
+    Bits(32)(36): Bits(32)(6),  # type-U
     Bits(32)(37): Bits(32)(6),
 }
 
