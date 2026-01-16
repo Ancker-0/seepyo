@@ -6,13 +6,14 @@ from rob import ROB
 from src.const import ROB_SIZE, INST_WIDTH
 
 class ALU(Module):
-    def __init__(self):
+    def __init__(self, rob_reset):
         super().__init__(ports = {
             "op_id": Port(Bits(INST_WIDTH)),
             "vj": Port(Bits(INST_WIDTH)),
             "vk": Port(Bits(INST_WIDTH)),
             "rob_id": Port(Bits(INST_WIDTH)),
         })
+        self.rob_reset = rob_reset
 
     @module.combinational
     def build(self, rob: ROB, rs):
@@ -55,10 +56,11 @@ class ALU(Module):
             })
             log("ALU: op_id={}, vj={}, vk={}, result={}, rob_entry={}", op_id, vj, vk, result, fetch_id)
 
-            # 直接写回 ROB[rob_entry_id]（不需要遍历）
-            rob_id = rob.entry_by_fetch_id(fetch_id)
-            rob.value[rob_id] = result
-            rob.busy[rob_id] = Bits(1)(0)  # 标记为完成
+            with Condition(~self.rob_reset[0]):
+                # 直接写回 ROB[rob_entry_id]（不需要遍历）
+                rob_id = rob.entry_by_fetch_id(fetch_id)
+                rob.value[rob_id] = result
+                rob.busy[rob_id] = Bits(1)(0)  # 标记为完成
 
             # 广播到 RS，用于结果转发（result forwarding）
             # rs.rob_id.push(rob_entry_id)

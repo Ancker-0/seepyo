@@ -46,7 +46,7 @@ def build():
         rs = RS()
         robL, robR = RegArray(Bits(32), 1, [0]), RegArray(Bits(32), 1, [0])
         rob = ROB(robL, robR, rob_reset, rob_PC)
-        alu = ALU()
+        alu = ALU(rob_reset=rob_reset)
 
         we, re, address_wire, write_wire = fetcher.build(sram, rs, rob, test_part=None, rob_R=robR)
         sram.build(we, re, address_wire, write_wire)

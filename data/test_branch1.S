@@ -11,8 +11,8 @@ _start:
   li a0, 100
   li a1, 0
   li a2, 10
-loop:
   add a3, a0, a2
+loop:
   beq a1, a2, done
   add a3, a3, a1
   addi a1, a1, 1
