@@ -11,6 +11,7 @@ class Register(Module):
         self.dependence = RegArrays(Bits(32), 32, self)
 
     def update(self, update_pos, update_val, update_id):
+        log("RF update: pos = {}, val = {}, id = {}", update_pos, update_val, update_id)
         with Condition(update_pos != Bits(32)(0)):
             self.val[update_pos] = update_val
             self.dependence[update_pos] = update_id

@@ -244,7 +244,9 @@ class Fetcher(Module):
             inst = decode_inst(sram.dout[0])
             inst.show()
             instJal = (inst.id == Bits(INST_WIDTH)(34))
-            with Condition((inst.id != Bits(INST_WIDTH)(0)) & ~instJal & ~rob.qfull() & rs.avail()):
+            instAuipc = (inst.id == Bits(INST_WIDTH)(36))
+            instLui = (inst.id == Bits(INST_WIDTH)(37))
+            with Condition((inst.id != Bits(INST_WIDTH)(0)) & ~instJal & ~instAuipc & ~instLui & ~rob.qfull() & rs.avail()):
                 (address_wire & self)[0] <= address_wire[0] + Bits(32)(1)
                 rs.rd.push(inst.rd)
                 rs.rs1.push(inst.rs1)
@@ -282,6 +284,30 @@ class Fetcher(Module):
                 rob.branch_PC.push(Bits(INST_WIDTH)(0))
                 log("Jal jumps from {} to {}", address_wire[0], ((address_wire[0] << Bits(32)(2)) + inst.imm) >> Bits(32)(2))
                 (address_wire & self)[0] <= (((address_wire[0] << Bits(32)(2)) + inst.imm) >> Bits(32)(2))
+
+            with Condition(instAuipc):
+                rob.rd.push(inst.rd)
+                rob.rs1.push(inst.rs1)  # useless
+                rob.rs2.push(inst.rs2)  # useless
+                rob.imm.push((address_wire[0] << Bits(32)(2)) + inst.imm)
+                rob.Type.push(inst.Type)
+                rob.Id.push(inst.id)
+                rob.Fetch_id.push(tick[0])
+                rob.expect_value.push(Bits(INST_WIDTH)(0))
+                rob.branch_PC.push(Bits(INST_WIDTH)(0))
+                (address_wire & self)[0] <= address_wire[0] + Bits(32)(1)
+
+            with Condition(instLui):
+                rob.rd.push(inst.rd)
+                rob.rs1.push(inst.rs1)  # useless
+                rob.rs2.push(inst.rs2)  # useless
+                rob.imm.push(inst.imm)
+                rob.Type.push(inst.Type)
+                rob.Id.push(inst.id)
+                rob.Fetch_id.push(tick[0])
+                rob.expect_value.push(Bits(INST_WIDTH)(0))
+                rob.branch_PC.push(Bits(INST_WIDTH)(0))
+                (address_wire & self)[0] <= address_wire[0] + Bits(32)(1)
 
         rs.async_called()
 

@@ -37,7 +37,7 @@ def build():
     with sys:
         rob_reset, rob_PC = RegArray(Bits(1), 1), RegArray(Bits(32), 1)
         fetcher = Fetcher(rob_reset, rob_PC)
-        init_file = Sys.argv[1] if len(Sys.argv) >= 2 else 'term_test.data'
+        init_file = Sys.argv[1] if len(Sys.argv) >= 2 else 'test_lui.data'
         sram = SRAM(INST_WIDTH, 2 ** ADDR_WIDTH, init_file)
 
         driver = Driver()
@@ -63,7 +63,7 @@ def build():
 def main():
     sys = build()
     resource_path = os.path.join(os.path.dirname(__file__), "..", "data")
-    sim, verilog = elaborate(sys, verbose=True, simulator=True, verilog=False, resource_base=resource_path, sim_threshold=600)
+    sim, verilog = elaborate(sys, verbose=True, simulator=True, verilog=False, resource_base=resource_path, sim_threshold=50)
     output = run_simulator(sim)
 
     for [Id, reg_name] in enumerate(Number_to_Register_Name):

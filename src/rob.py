@@ -153,16 +153,16 @@ class ROB(Module):
                 with Condition(inst.Type == Bits(32)(5)):  # type-J: only jal
                     rf.update(inst.rd, inst.imm, Fetch_id)
                     self.rob_push(inst.id, inst.rd, inst.imm, Fetch_id, expect_value, branch_PC, busy=False)
+                with Condition(inst.Type == Bits(32)(6)):  # type-U: only auipc/lui
+                    rf.update(inst.rd, inst.imm, Fetch_id)
+                    self.rob_push(inst.id, inst.rd, inst.imm, Fetch_id, expect_value, branch_PC, busy=False)
                 # Type 0 (invalid) instructions are not pushed to ROB
                 # They represent decoded 0x00000000 or other invalid encodings
-
-            # need to deal with ALU so that we can commit
-            # TODO
 
             # commit
             commit_inst_type = inst_id_to_type(self.Op_id[self.L[0]])
             top_ready = (self.L[0] != self.R[0]) & (~self.busy[self.L[0]])
-            predict_failed = ((commit_inst_type == Bits(32)(4)) | (commit_inst_type == Bits(32)(6))) & (self.expect_val[self.L[0]] != self.value[self.L[0]])
+            predict_failed = (commit_inst_type == Bits(32)(4)) & (self.expect_val[self.L[0]] != self.value[self.L[0]])
 
             with Condition(top_ready):
                 Commit_id = self.fetch_id[self.L[0]]
@@ -178,7 +178,7 @@ class ROB(Module):
                     self.flush_tag[0] = Bits(1)(1) # for register, we need one clock lag to flush for register is a downstream module in code but instead need one clock
 
                 # show to rf
-                with Condition((commit_inst_type == Bits(32)(1)) | (commit_inst_type == Bits(32)(2)) | (commit_inst_type == Bits(32)(5))):
+                with Condition((commit_inst_type == Bits(32)(1)) | (commit_inst_type == Bits(32)(2)) | (commit_inst_type == Bits(32)(5)) | (commit_inst_type == Bits(32)(6))):
                     dest = self.dest[self.L[0]]
                     with Condition(dest != new_dest):
                         with Condition((rf.dependence[dest] == Commit_id)):
