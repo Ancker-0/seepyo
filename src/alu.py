@@ -44,6 +44,13 @@ class ALU(Module):
                 Bits(32)(10): (vj < vk).zext(Bits(32)),  # sltu, sltiu
                 Bits(32)(19): (vj < vk).zext(Bits(32)),  # sltu, sltiu
                 Bits(32)(37): vk << Bits(32)(12),  # lui
+
+                Bits(32)(28): (vj == vk).bitcast(Bits(32)),
+                Bits(32)(29): (~(vj.bitcast(Int(32)) < vk.bitcast(Int(32)))).bitcast(Bits(32)),
+                Bits(32)(30): (~(vj < vk)).bitcast(Bits(32)),
+                Bits(32)(31): (vj.bitcast(Int(32)) < vk.bitcast(Int(32))).bitcast(Bits(32)),
+                Bits(32)(32): (vj < vk).bitcast(Bits(32)),
+                Bits(32)(33): (vj != vk).bitcast(Bits(32)),
                 None: Bits(32)(0)
             })
             log("ALU: op_id={}, vj={}, vk={}, result={}, rob_entry={}", op_id, vj, vk, result, fetch_id)
