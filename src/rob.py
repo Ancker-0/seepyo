@@ -178,7 +178,7 @@ class ROB(Module):
                     self.flush_tag[0] = Bits(1)(1) # for register, we need one clock lag to flush for register is a downstream module in code but instead need one clock
 
                 # show to rf
-                with Condition((commit_inst_type == Bits(32)(1)) | (commit_inst_type == Bits(32)(2))):
+                with Condition((commit_inst_type == Bits(32)(1)) | (commit_inst_type == Bits(32)(2)) | (commit_inst_type == Bits(32)(5))):
                     dest = self.dest[self.L[0]]
                     with Condition(dest != new_dest):
                         with Condition((rf.dependence[dest] == Commit_id)):

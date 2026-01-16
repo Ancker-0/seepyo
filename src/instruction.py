@@ -189,11 +189,11 @@ class Inst:
                     #imm = (self.id == Bits(32)(22)).select(get_int_val(self.imm, 11), imm)  # lh
                     #imm = (self.id == Bits(32)(24)).select(get_int_val(self.imm, 11), imm)  # lw
                     #imm = (self.id == Bits(32)(35)).select(get_int_val(self.imm, 11), imm)  # jalr
-                    log(f"inst = {name}, rd = ~{{}}~, rs1 = ~{{}}~, imm = {{:X}} --- [Type I]", self.rd, self.rs1, imm)
+                    log(f"inst = {name}, rd = ~{{}}~, rs1 = ~{{}}~, imm = {{:#X}} --- [Type I]", self.rd, self.rs1, imm)
                 with Condition(self.Type == Bits(32)(3)):
                     imm = self.imm
                     #imm = get_int_val(self.imm, 11) # sb & sh & sw
-                    log(f"inst = {name}, rs2 = ~{{}}~, imm = {{:X}}, ( rs1 = ~{{}}~ ) --- [Type S]", self.rs2, imm, self.rs1)
+                    log(f"inst = {name}, rs2 = ~{{}}~, imm = {{:#X}}, ( rs1 = ~{{}}~ ) --- [Type S]", self.rs2, imm, self.rs1)
                 with Condition(self.Type == Bits(32)(4)):
                     imm = self.imm
                     #imm = self.imm.bitcast(Int(32))
@@ -201,10 +201,10 @@ class Inst:
                     #imm = (self.id == Bits(32)(29)).select(get_int_val(self.imm, 12), imm)  # bge
                     #imm = (self.id == Bits(32)(31)).select(get_int_val(self.imm, 12), imm)  # blt
                     #imm = (self.id == Bits(32)(33)).select(get_int_val(self.imm, 12), imm)  # bne
-                    log(f"inst = {name}, rs1 = ~{{}}~, rs2 = ~{{}}~, offset(store as imm) = {{:X}} --- [Type B]", self.rs1, self.rs2, imm)
+                    log(f"inst = {name}, rs1 = ~{{}}~, rs2 = ~{{}}~, offset(store as imm) = {{:#X}} --- [Type B]", self.rs1, self.rs2, imm)
                 with Condition(self.Type == Bits(32)(5)):
                     imm = self.imm
                     #imm = get_int_val(self.imm, 20)  # jal
-                    log(f"inst = {name}, rd = ~{{}}~, offset(store as imm) = {{:X}} --- [Type J]", self.rd, imm)
+                    log(f"inst = {name}, rd = ~{{}}~, offset(store as imm) = {{:#X}} --- [Type J]", self.rd, imm)
                 with Condition(self.Type == Bits(32)(6)):
-                    log(f"inst = {name}, rd = ~{{}}~, immu = {{:X}} --- [Type U]", self.rd, self.imm)
+                    log(f"inst = {name}, rd = ~{{}}~, immu = {{:#X}} --- [Type U]", self.rd, self.imm)

@@ -172,7 +172,7 @@ def decode_typeB(v: Bits):
 
 def decode_typeJ(v: Bits):
     rd = get_number_range(v, 7, 11)
-    imm = get_number_range_multiple(v, [1, 0], [21, 30], [20, 20], [12, 19], [31, 31])
+    imm = get_number_range_multiple(v, [1, 0], [21, 30], [20, 20], [12, 19], [31, 31], sext=True)
 
     rs1 = Bits(INST_WIDTH)(0)
     rs2 = Bits(INST_WIDTH)(0)
@@ -280,8 +280,8 @@ class Fetcher(Module):
                 rob.Fetch_id.push(tick[0])
                 rob.expect_value.push(Bits(INST_WIDTH)(0))
                 rob.branch_PC.push(Bits(INST_WIDTH)(0))
-                log("Jal jumps from {} to {}", address_wire[0], address_wire[0] + (inst.imm >> Bits(32)(2)))
-                (address_wire & self)[0] <= address_wire[0] + (inst.imm >> Bits(32)(2))
+                log("Jal jumps from {} to {}", address_wire[0], ((address_wire[0] << Bits(32)(2)) + inst.imm) >> Bits(32)(2))
+                (address_wire & self)[0] <= (((address_wire[0] << Bits(32)(2)) + inst.imm) >> Bits(32)(2))
 
         rs.async_called()
 
