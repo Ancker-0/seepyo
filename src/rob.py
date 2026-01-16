@@ -8,7 +8,7 @@ from toolbox import  RegArrays
 from instruction import Inst, inst_id_to_type, get_int_val
 
 class ROB(Module):
-    def __init__(self, robL, robR):
+    def __init__(self, robL, robR, rob_reset, rob_PC):
         super().__init__(ports = {
             "rd": Port(Bits(INST_WIDTH)),
             "rs1": Port(Bits(INST_WIDTH)),
@@ -34,6 +34,8 @@ class ROB(Module):
         # self.R = RegArray(Bits(32), 1, [0])
         self.L = robL
         self.R = robR
+        self.rob_reset = rob_reset
+        self.rob_PC = rob_PC
 
         self.flush_tag = RegArrays(Bits(1), 1, self)
 
@@ -168,7 +170,10 @@ class ROB(Module):
 
                 # in case of branch mispredict
                 with Condition(predict_failed):
+                    log("PREDICTION FAIL!!!")
                     rs.flush_tag.push(Bits(1)(1))
+                    (self.rob_reset & self)[0] <= Bits(1)(1)
+                    (self.rob_PC & self)[0] <= self.branch_pc_val[self.L[0]]
                     # need more TODO with memory access
                     self.flush_tag[0] = Bits(1)(1) # for register, we need one clock lag to flush for register is a downstream module in code but instead need one clock
 

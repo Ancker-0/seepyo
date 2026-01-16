@@ -215,8 +215,10 @@ def decode_inst(v: Bits):
     return res
 
 class Fetcher(Module):
-    def __init__(self):
+    def __init__(self, rob_reset, rob_PC):
         super().__init__({})
+        self.rob_reset = rob_reset
+        self.rob_PC = rob_PC
 
     @module.combinational
     def build(self, sram: SRAM, rs: RS, rob: ROB, test_part, rob_R):
@@ -232,7 +234,12 @@ class Fetcher(Module):
         log("tick = {}", tick[0])
 
         (last_read & self)[0] <= address_wire[0]
-        with Condition(address_wire[0] == last_read[0]):
+
+        with Condition(self.rob_reset[0]):
+            address_wire[0] <= (self.rob_PC[0] >> Bits(32)(2))
+            self.rob_reset[0] <= Bits(1)(0)
+
+        with Condition((address_wire[0] == last_read[0]) & ~self.rob_reset[0]):
             log('Got inst {:X}', sram.dout[0])
             inst = decode_inst(sram.dout[0])
             inst.show()

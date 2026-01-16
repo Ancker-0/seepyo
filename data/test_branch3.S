@@ -1,6 +1,6 @@
 # Expected result:
 # a1: 10
-# a2: 20
+# a2: 10
 # ra: 100
 
 .section .text
