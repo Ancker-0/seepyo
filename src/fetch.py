@@ -28,8 +28,8 @@ def get_number_range_multiple(v: Bits, *args, **kwargs):# can't use [0,0]
         else:
             sz += cov[0]
     if sext:
-        # log("SEXT {} {} {}", tmp, (Bits(32)(0) - (v & (Bits(32)(1) << Bits(32)(sz - 1)))), tmp | (Bits(32)(0) - (v & (Bits(32)(1) << Bits(32)(sz - 1)))))
-        return tmp | (Bits(32)(0) - (v & (Bits(32)(1) << Bits(32)(sz - 1))))
+        # log("SEXT {} {} {}", tmp, (Bits(32)(0) - (tmp & (Bits(32)(1) << Bits(32)(sz - 1)))), tmp | (Bits(32)(0) - (tmp & (Bits(32)(1) << Bits(32)(sz - 1)))))
+        return tmp | (Bits(32)(0) - (tmp & (Bits(32)(1) << Bits(32)(sz - 1))))
     return tmp
 
 def decode_typeR(v: Bits):
