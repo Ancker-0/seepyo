@@ -339,6 +339,8 @@ class Fetcher(Module):
                 (address_wire & self)[0] <= address_wire[0] + Bits(32)(1)
             
             with Condition(instJalr):
+                log("JALR rs1 = {}, rd = {}, dep = {}, addr = {}",
+                    inst.rs1, inst.rd, rf.dependence[inst.rs1], (rf.val[inst.rs1] + inst.imm) >> Bits(32)(2))
                 with Condition(rf.dependence[inst.rs1] == Bits(32)(0)):
                     rob.rd.push(inst.rd)
                     rob.rs1.push(inst.rs1)  # useless
@@ -349,7 +351,7 @@ class Fetcher(Module):
                     rob.Fetch_id.push(tick[0])
                     rob.expect_value.push(Bits(INST_WIDTH)(0))
                     rob.branch_PC.push(Bits(INST_WIDTH)(0))
-                    (address_wire & self)[0] <= address_wire[0] + (inst.imm >> Bits(32)(2))
+                    (address_wire & self)[0] <= ((rf.val[inst.rs1] + inst.imm) >> Bits(32)(2))
 
         lsb.async_called()
         rs.async_called()

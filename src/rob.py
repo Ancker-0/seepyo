@@ -142,7 +142,10 @@ class ROB(Module):
                 with Condition((inst.Type == Bits(32)(1)) | (inst.Type == Bits(32)(2))):
                     log("ROB: Type {}/{}, updating rf.dependence[{}] = {}", inst.Type, inst.id, inst.rd, Fetch_id)
                     rf.update(inst.rd, rf.val[inst.rd], Fetch_id)
-                    self.rob_push(inst.id, inst.rd, Bits(32)(0), Fetch_id, expect_value, branch_PC)
+                    with Condition(inst.id == Bits(32)(35)):
+                        self.rob_push(inst.id, inst.rd, inst.imm, Fetch_id, expect_value, branch_PC, busy=False)
+                    with Condition(inst.id != Bits(32)(35)):
+                        self.rob_push(inst.id, inst.rd, Bits(32)(0), Fetch_id, expect_value, branch_PC, busy=True)
                 with Condition(inst.Type == Bits(32)(4)):
                     self.rob_push(inst.id, Bits(32)(0), Bits(32)(0), Fetch_id, expect_value, branch_PC)
                 with Condition(inst.Type == Bits(32)(3)):

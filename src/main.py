@@ -66,7 +66,7 @@ def build():
 def main():
     sys = build()
     resource_path = os.path.join(os.path.dirname(__file__), "..", "data")
-    sim, verilog = elaborate(sys, verbose=True, simulator=True, verilog=False, resource_base=resource_path, sim_threshold=50)
+    sim, verilog = elaborate(sys, verbose=True, simulator=True, verilog=False, resource_base=resource_path, sim_threshold=300)
     output = run_simulator(sim)
 
     for [Id, reg_name] in enumerate(Number_to_Register_Name):
