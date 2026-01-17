@@ -98,7 +98,9 @@ class ROB(Module):
     def qfull(self):
         # For some technical reasons, the modification from fetcher takes two cycles to take effect in rob,
         # which means we need to leave one space for this.
-        return ((self.R[0] + Bits(32)(1)) % Bits(32)(ROB_SIZE) == self.L[0]) | ((self.R[0] + Bits(32)(2)) % Bits(32)(ROB_SIZE) == self.L[0])
+        return ((self.R[0] + Bits(32)(1)) % Bits(32)(ROB_SIZE) == self.L[0])\
+            | ((self.R[0] + Bits(32)(2)) % Bits(32)(ROB_SIZE) == self.L[0])\
+            | ((self.R[0] + Bits(32)(3)) % Bits(32)(ROB_SIZE) == self.L[0])
 
     def log(self):
         log("------- ROB log start ------- L={}, R={}", self.L[0], self.R[0])
@@ -177,7 +179,7 @@ class ROB(Module):
                     rs.flush_tag.push(Bits(1)(1))
                     (self.rob_reset & self)[0] <= Bits(1)(1)
                     (self.rob_PC & self)[0] <= self.branch_pc_val[self.L[0]]
-                    # need more TODO with memory access
+                    lsb.flush_tag.push(Bits(1)(1))
                     self.flush_tag[0] = Bits(1)(1) # for register, we need one clock lag to flush for register is a downstream module in code but instead need one clock
 
                 # show to rf

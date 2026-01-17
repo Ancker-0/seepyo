@@ -238,11 +238,12 @@ class Fetcher(Module):
         (last_read & self)[0] <= address_wire[0]
 
         with Condition(self.rob_reset[0]):
+            log("PC reset to {}", (self.rob_PC[0] >> Bits(32)(2)))
             address_wire[0] <= (self.rob_PC[0] >> Bits(32)(2))
             self.rob_reset[0] <= Bits(1)(0)
 
         with Condition((address_wire[0] == last_read[0]) & ~self.rob_reset[0]):
-            log('Got inst {:X}', sram.dout[0])
+            log('Got inst {:#X} at addr {}', sram.dout[0], address_wire[0])
             inst = decode_inst(sram.dout[0])
             inst.show()
             instJal = (inst.id == Bits(INST_WIDTH)(34))
@@ -251,7 +252,6 @@ class Fetcher(Module):
             instJalr = (inst.id == Bits(INST_WIDTH)(35))
             lsbSeries = (Bits(32)(19) < inst.id) & (inst.id < Bits(32)(28))
             with Condition((inst.id != Bits(INST_WIDTH)(0)) & ~instJal & ~instAuipc & ~instLui & ~lsbSeries & ~instJalr & ~rob.qfull() & rs.avail()):
-                (address_wire & self)[0] <= address_wire[0] + Bits(32)(1)
                 rs.rd.push(inst.rd)
                 rs.rs1.push(inst.rs1)
                 rs.rs2.push(inst.rs2)
@@ -263,7 +263,11 @@ class Fetcher(Module):
                 rs.fetch_id.push(tick[0])
 
                 expect_value = (inst.Type == Bits(32)(4)).select(branch_predict(address_wire[0] << Bits(32)(2), inst.imm), Bits(1)(0))
+                nextPC = expect_value.select((address_wire[0] << Bits(32)(2)) + inst.imm, (address_wire[0] << Bits(32)(2)) + Bits(32)(4))
                 otherPC = (~expect_value).select((address_wire[0] << Bits(32)(2)) + inst.imm, (address_wire[0] << Bits(32)(2)) + Bits(32)(4))
+                (address_wire & self)[0] <= (nextPC >> Bits(32)(2))
+                with Condition(inst.Type == Bits(32)(4)):
+                    log("B-type jump to {} or {}", nextPC, otherPC)
 
                 # 推送到 ROB - 始终推送以保持 RS 和 ROB 同步
                 rob.rd.push(inst.rd)
@@ -276,7 +280,7 @@ class Fetcher(Module):
                 rob.expect_value.push(expect_value.bitcast(Bits(32)))
                 rob.branch_PC.push(otherPC)
 
-            with Condition(lsbSeries):
+            with Condition(lsbSeries & lsb.avail()):
                 (address_wire & self)[0] <= address_wire[0] + Bits(32)(1)
                 with Condition(inst.id == Bits(32)(24)):  # lw
                     lsb.p_opid.push(inst.id)
