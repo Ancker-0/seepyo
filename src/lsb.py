@@ -107,13 +107,23 @@ class LSB(Module):
                             self.imm[i] = imm
                             self.done[i] = Bits(1)(0)
                         with Condition(opid == Bits(32)(27)):  # sw
-                            pass
+                            self.opid[i] = opid
+                            self.Vj[i] = (rf.dependence[rs1] == Bits(32)(0)).select(rf.val[rs1], Bits(32)(0))
+                            self.Vk[i] = (rf.dependence[rs2] == Bits(32)(0)).select(rf.val[rs2], Bits(32)(0))
+                            self.Qj[i] = (rf.dependence[rs1] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[rs1])
+                            self.Qk[i] = (rf.dependence[rs2] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[rs2])
+                            self.fetch_id[i] = fetch_id
+                            self.imm[i] = imm
+                            self.done[i] = Bits(1)(0)
                     once_tag = once_tag & ~avail
 
+
+            peek_robid = self.p_robid.valid().select(self.p_robid.peek(), Bits(32)(0))
             # done things for ROB
             with Condition(self.p_robid.valid()):
                 rob_id = self.p_robid.pop()
                 rob_value = self.p_robval.pop()
+                once_tag = Bits(1)(1)
                 for i in range(self.size):
                     with Condition(self.opid[i] != Bits(32)(0)):
                         with Condition(self.Qj[i] == rob_id):
@@ -122,10 +132,21 @@ class LSB(Module):
                         with Condition(self.Qk[i] == rob_id):
                             self.Vk[i] = rob_value
                             self.Qk[i] = Bits(32)(0)
+                    with Condition((self.fetch_id[i] == rob_id) & isStore(self.opid[i]) & once_tag):
+                        we[0] = Bits(1)(1)
+                        re[0] = Bits(1)(0)
+                        address_wire[0] = (self.Vj[i] + self.imm[i]) >> Bits(32)(2)
+                        wdata[0] = self.Vk[i]
+                        self.clean(i)
+                        log("issue writing addr = {}, data = {}", (self.Vj[i] + self.imm[i]) >> Bits(32)(2), self.Vk[i])
+                    once_tag = once_tag & ~((self.fetch_id[i] == rob_id) & isStore(self.opid[i]) & once_tag)
 
             # ask sram
-            with Condition(~waiting[0]):
+            with Condition(~waiting[0] & (read_entry[0] == Bits(32)(self.size))):
                 once_tag = Bits(1)(1)
+                for i in range(self.size):
+                    once_tag = once_tag & ~((self.fetch_id[i] == peek_robid) & isStore(self.opid[i]) & once_tag)
+                once_tag = once_tag | ~self.p_robid.valid()
                 for i in range(self.size):
                     loadCan = (self.opid[i] == Bits(32)(24)) & (self.Qj[i] == Bits(32)(0)) & self.no_dep(self.fetch_id[i])
                     with Condition(once_tag & loadCan):  # lb
@@ -134,7 +155,7 @@ class LSB(Module):
                         address_wire[0] = (self.Vj[i] + self.imm[i]) >> Bits(32)(2)
                         read_entry[0] = Bits(32)(i)
                         waiting[0] = Bits(1)(1)
-                        log("issue reading addr = {}", address_wire[0])
+                        log("issue reading addr = {}", (self.Vj[i] + self.imm[i]) >> Bits(32)(2))
                     once_tag = once_tag & (~loadCan)
 
             with Condition(read_entry[0] != Bits(32)(self.size)):

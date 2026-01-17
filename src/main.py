@@ -38,7 +38,7 @@ def build():
     with sys:
         rob_reset, rob_PC = RegArray(Bits(1), 1), RegArray(Bits(32), 1)
         fetcher = Fetcher(rob_reset, rob_PC)
-        init_file = Sys.argv[1] if len(Sys.argv) >= 2 else 'test_lui.data'
+        init_file = Sys.argv[1] if len(Sys.argv) >= 2 else 'test_sw1.data'
         sram = SRAM(INST_WIDTH, 2 ** ADDR_WIDTH, init_file)
 
         driver = Driver()
