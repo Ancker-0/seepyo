@@ -298,7 +298,6 @@ class Fetcher(Module):
                 rob.Fetch_id.push(tick[0])
                 rob.expect_value.push(Bits(32)(0))
                 rob.branch_PC.push(Bits(32)(0))
-                lsb.async_called()
 
             with Condition(instJal):
                 rob.rd.push(inst.rd)
@@ -337,8 +336,8 @@ class Fetcher(Module):
                 rob.branch_PC.push(Bits(INST_WIDTH)(0))
                 (address_wire & self)[0] <= address_wire[0] + Bits(32)(1)
 
+        lsb.async_called()
         rs.async_called()
-
         rob.async_called()  # ROB needs to be driven to execute
         # test_part.async_called()
 

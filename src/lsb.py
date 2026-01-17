@@ -38,7 +38,7 @@ class LSB(Module):
         self.imm = RegArrays(Bits(32), LSB_SIZE, self)
         self.done = RegArrays(Bits(1), LSB_SIZE, self)
 
-        self.sram = SRAM(32, 2 ** ADDR_WIDTH)
+        self.sram = SRAM(32, 2 ** ADDR_WIDTH, init_file=None)
 
     def clean(self, Id):
         self.opid[Id] = Bits(32)(0)
@@ -71,11 +71,13 @@ class LSB(Module):
 
     @module.combinational
     def build(self, rf: Register, rob: ROB):
-        we = Bits(1)(0)
-        re = Bits(1)(0)
-        address_wire = Bits(32)(0)
-        wdata = Bits(32)(0)
-        read_entry = RegArray(Bits(32)(0), 1, [self.size])
+        we = RegArrays(Bits(1), 1, self)
+        re = RegArrays(Bits(1), 1, self)
+        address_wire = RegArrays(Bits(32), 1, self)
+        wdata = RegArrays(Bits(32), 1, self)
+        self.sram.build(we[0], re[0], address_wire[0], wdata[0])
+        read_entry = RegArrays(Bits(32), 1, self, [self.size])
+        waiting = RegArrays(Bits(1), 1, self)
 
         flush = self.flush_tag.valid()
         with Condition(flush):
@@ -122,23 +124,28 @@ class LSB(Module):
                             self.Qk[i] = Bits(32)(0)
 
             # ask sram
-            once_tag = Bits(1)(1)
-            for i in range(self.size):
-                loadCan = (self.opid[i] == Bits(32)(24)) & (self.Qj[i] == Bits(32)(0)) & self.no_dep(self.fetch_id[i])
-                with Condition(once_tag & loadCan):  # lb
-                    we = we & Bits(1)(0)
-                    re = re | Bits(1)(1)
-                    address_wire = (address_wire & Bits(32)(0)) | ((self.Vj[i] + self.imm[i]) >> Bits(32)(2))
-                    (read_entry & self)[0] <= Bits(32)(i)
-                once_tag = once_tag & (~loadCan)
-            
+            with Condition(~waiting[0]):
+                once_tag = Bits(1)(1)
+                for i in range(self.size):
+                    loadCan = (self.opid[i] == Bits(32)(24)) & (self.Qj[i] == Bits(32)(0)) & self.no_dep(self.fetch_id[i])
+                    with Condition(once_tag & loadCan):  # lb
+                        we[0] = Bits(1)(0)
+                        re[0] = Bits(1)(1)
+                        address_wire[0] = (self.Vj[i] + self.imm[i]) >> Bits(32)(2)
+                        read_entry[0] = Bits(32)(i)
+                        waiting[0] = Bits(1)(1)
+                        log("issue reading addr = {}", address_wire[0])
+                    once_tag = once_tag & (~loadCan)
+
             with Condition(read_entry[0] != Bits(32)(self.size)):
-                (read_entry & self)[0] <= Bits(32)(self.size)
-                id = read_entry[0]
-                self.clean(id)
-                rob_entry = rob.entry_by_fetch_id(self.fetch_id[id])
-                rob.value[rob_entry] = self.sram.dout[0]
-                rob.busy[rob_entry] = Bits(1)(0)
-        self.sram.build(we, re, address_wire, wdata)
+                with Condition(waiting[0]):
+                    waiting[0] = Bits(1)(0)
+                with Condition(~waiting[0]):
+                    read_entry[0] <= Bits(32)(self.size)
+                    id = read_entry[0]
+                    self.clean(id)
+                    rob_entry = rob.entry_by_fetch_id(self.fetch_id[id])
+                    rob.value[rob_entry] = self.sram.dout[0]
+                    rob.busy[rob_entry] = Bits(1)(0)
 
         self.log()

@@ -3,10 +3,13 @@ from assassyn.backend import elaborate
 from assassyn.utils import run_simulator, run_verilator
 
 class RegArrays:
-    def __init__(self, type, size, ego):
+    def __init__(self, type, size, ego, init=None):
         self.size = size
         self.type = type
-        self.array = [RegArray(type, 1) for _ in range(size)]
+        if init:
+            self.array = [RegArray(type, 1, [init[i]]) for i in range(size)]
+        else:
+            self.array = [RegArray(type, 1) for _ in range(size)]
         self.ego = ego
 
     def __getitem__(self, item):

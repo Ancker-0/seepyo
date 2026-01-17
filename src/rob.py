@@ -2,7 +2,6 @@ from assassyn.frontend import *
 from assassyn.backend import elaborate
 from assassyn.utils import run_simulator, run_verilator
 
-from lsb import LSB
 from register import Register
 from src.const import ROB_SIZE, INST_WIDTH
 from toolbox import  RegArrays
@@ -116,7 +115,7 @@ class ROB(Module):
         return ret
 
     @module.combinational
-    def build(self, rf: Register, rs, lsb: LSB):
+    def build(self, rf: Register, rs, lsb):
         with Condition(self.flush_tag[0]):
             log("branch mispredict happened, flushing ROB and rf")
             self.L[0] = Bits(32)(0)
