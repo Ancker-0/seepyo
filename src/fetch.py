@@ -9,6 +9,7 @@ from lsb import LSB
 from register import Register
 from rob import ROB
 from rs import RS
+from toolbox import RegArrays
 
 
 def get_number_range(v: Bits, l: int, r: int):
@@ -242,6 +243,7 @@ class Fetcher(Module):
             address_wire[0] <= (self.rob_PC[0] >> Bits(32)(2))
             self.rob_reset[0] <= Bits(1)(0)
 
+        jalrBubbled = RegArrays(Bits(2), 1, self)
         with Condition((address_wire[0] == last_read[0]) & ~self.rob_reset[0]):
             log('Got inst {:#X} at addr {}', sram.dout[0], address_wire[0])
             inst = decode_inst(sram.dout[0])
@@ -343,19 +345,25 @@ class Fetcher(Module):
                 (address_wire & self)[0] <= address_wire[0] + Bits(32)(1)
             
             with Condition(instJalr):
-                log("JALR rs1 = {}, rd = {}, dep = {}, addr = {}",
-                    inst.rs1, inst.rd, rf.dependence[inst.rs1], (rf.val[inst.rs1] + inst.imm) >> Bits(32)(2))
-                with Condition(rf.dependence[inst.rs1] == Bits(32)(0)):
-                    rob.rd.push(inst.rd)
-                    rob.rs1.push(inst.rs1)  # useless
-                    rob.rs2.push(inst.rs2)  # useless
-                    rob.imm.push((address_wire[0] + Bits(32)(1)) << Bits(32)(2))
-                    rob.Type.push(inst.Type)
-                    rob.Id.push(inst.id)
-                    rob.Fetch_id.push(tick[0])
-                    rob.expect_value.push(Bits(INST_WIDTH)(0))
-                    rob.branch_PC.push(Bits(INST_WIDTH)(0))
-                    (address_wire & self)[0] <= ((rf.val[inst.rs1] + inst.imm) >> Bits(32)(2))
+                with Condition(jalrBubbled[0] == Bits(2)(0)):
+                    jalrBubbled[0] = Bits(2)(1)
+                with Condition(jalrBubbled[0] == Bits(2)(1)):
+                    jalrBubbled[0] = Bits(2)(2)
+                with Condition(jalrBubbled[0] == Bits(2)(2)):
+                    jalrBubbled[0] = Bits(2)(0)
+                    log("JALR rs1 = {}, rd = {}, dep = {}, addr = {}",
+                        inst.rs1, inst.rd, rf.dependence[inst.rs1], (rf.val[inst.rs1] + inst.imm) >> Bits(32)(2))
+                    with Condition(rf.dependence[inst.rs1] == Bits(32)(0)):
+                        rob.rd.push(inst.rd)
+                        rob.rs1.push(inst.rs1)  # useless
+                        rob.rs2.push(inst.rs2)  # useless
+                        rob.imm.push((address_wire[0] + Bits(32)(1)) << Bits(32)(2))
+                        rob.Type.push(inst.Type)
+                        rob.Id.push(inst.id)
+                        rob.Fetch_id.push(tick[0])
+                        rob.expect_value.push(Bits(INST_WIDTH)(0))
+                        rob.branch_PC.push(Bits(INST_WIDTH)(0))
+                        (address_wire & self)[0] <= ((rf.val[inst.rs1] + inst.imm) >> Bits(32)(2))
 
         lsb.async_called()
         rs.async_called()
