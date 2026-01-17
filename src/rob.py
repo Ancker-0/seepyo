@@ -68,7 +68,7 @@ class ROB(Module):
         self.branch_pc_val[entry] = branch_PC
         return entry  # 返回分配的条目索引
 
-    def rob_push_store(self, Op_id, dest, value, ID, expect_value, branch_PC, is_terminate):
+    def rob_push_store(self, Op_id, dest, value, ID, expect_value, branch_PC, is_terminate, busy: bool = True):
         # For store instructions - same as rob_push but sets =0
         # since stores don't execute in ALU
         entry = self.R[0]
@@ -76,7 +76,7 @@ class ROB(Module):
         self.R[0] = new_R
         log("store pushed to {}", entry)
 
-        self.busy[entry] = Bits(1)(0)  # Store entries start as not busy
+        self.busy[entry] = Bits(1)(busy)
         self.Op_id[entry] = Op_id
         self.dest[entry] = dest
         self.value[entry] = value
@@ -143,7 +143,7 @@ class ROB(Module):
 
                 with Condition((inst.Type == Bits(32)(1)) | (inst.Type == Bits(32)(2))):
                     log("ROB: Type {}/{}, updating rf.dependence[{}] = {}", inst.Type, inst.id, inst.rd, Fetch_id)
-                    rf.update(inst.rd, rf.val[inst.rd], Fetch_id)
+                    rf.update_noval(inst.rd, Fetch_id)
                     with Condition(inst.id == Bits(32)(35)):
                         self.rob_push(inst.id, inst.rd, inst.imm, Fetch_id, expect_value, branch_PC, busy=False)
                     with Condition(inst.id != Bits(32)(35)):
@@ -156,17 +156,19 @@ class ROB(Module):
                     is_terminate = (inst.id == Bits(32)(25)) & (inst.rs1 == Bits(32)(0)) & (inst.rs2 == Bits(32)(0)) & (inst.imm == Bits(32)(0xFFFFFFFF))
                     self.rob_push_store(inst.id, Bits(32)(0), Bits(32)(0), Fetch_id, expect_value, branch_PC, is_terminate)
                 with Condition(inst.Type == Bits(32)(5)):  # type-J: only jal
-                    rf.update(inst.rd, inst.imm, Fetch_id)
+                    rf.update_noval(inst.rd, Fetch_id)
                     self.rob_push(inst.id, inst.rd, inst.imm, Fetch_id, expect_value, branch_PC, busy=False)
                 with Condition(inst.Type == Bits(32)(6)):  # type-U: only auipc/lui
-                    rf.update(inst.rd, inst.imm, Fetch_id)
+                    rf.update_noval(inst.rd, Fetch_id)
                     self.rob_push(inst.id, inst.rd, inst.imm, Fetch_id, expect_value, branch_PC, busy=False)
                 # Type 0 (invalid) instructions are not pushed to ROB
                 # They represent decoded 0x00000000 or other invalid encodings
 
             # commit
             commit_inst_type = inst_id_to_type(self.Op_id[self.L[0]])
-            top_ready = (self.L[0] != self.R[0]) & (~self.busy[self.L[0]])
+            lsb_entry = lsb.entry_by_fetchid(self.fetch_id[self.L[0]])
+            isSW = (self.Op_id[self.L[0]] == Bits(32)(27)) & (lsb.Qj[lsb_entry] == Bits(32)(0)) & (lsb.Qk[lsb_entry] == Bits(32)(0))
+            top_ready = (self.L[0] != self.R[0]) & ((~self.busy[self.L[0]]) | isSW)
             predict_failed = (commit_inst_type == Bits(32)(4)) & (self.expect_val[self.L[0]] != self.value[self.L[0]])
 
             with Condition(top_ready):
@@ -185,10 +187,17 @@ class ROB(Module):
                 # show to rf
                 with Condition((commit_inst_type == Bits(32)(1)) | (commit_inst_type == Bits(32)(2)) | (commit_inst_type == Bits(32)(5)) | (commit_inst_type == Bits(32)(6))):
                     dest = self.dest[self.L[0]]
-                    with Condition(dest != new_dest):
-                        with Condition((rf.dependence[dest] == Commit_id)):
+                    with Condition((rf.dependence[dest] == Commit_id)):
+                        with Condition(dest != new_dest):
+                            # Normal case: new instruction targets different register
                             rf.update(dest, self.value[self.L[0]], Bits(32)(0))
                             log("commit rf[{}] = {}", dest, self.value[self.L[0]])
+                        with Condition(dest == new_dest):
+                            # Special case: new instruction targets same register
+                            # The new instruction has already set the dependence, so we only
+                            # need to update the value with the committing instruction's result
+                            rf.update_value_only(dest, self.value[self.L[0]])
+                            log("commit rf[{}] = {} (value only, same as new dest)", dest, self.value[self.L[0]])
 
                 # show to rs
                 rs.rob_id.push(Commit_id)

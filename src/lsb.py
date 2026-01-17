@@ -69,6 +69,12 @@ class LSB(Module):
             ret = ret & (~isStore(self.opid[i]) | (fetchid < self.fetch_id[i]))
         return ret
 
+    def entry_by_fetchid(self, idx):
+        ret = Bits(1)(0)
+        for i in range(self.size):
+            ret = ret & (self.fetch_id[i] == idx)
+        return ret
+
     @module.combinational
     def build(self, rf: Register, rob: ROB):
         we = RegArrays(Bits(1), 1, self)
@@ -110,11 +116,17 @@ class LSB(Module):
                             self.opid[i] = opid
                             self.Vj[i] = (rf.dependence[rs1] == Bits(32)(0)).select(rf.val[rs1], Bits(32)(0))
                             self.Vk[i] = (rf.dependence[rs2] == Bits(32)(0)).select(rf.val[rs2], Bits(32)(0))
-                            self.Qj[i] = (rf.dependence[rs1] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[rs1])
-                            self.Qk[i] = (rf.dependence[rs2] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[rs2])
+                            Qj = (rf.dependence[rs1] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[rs1])
+                            Qk = (rf.dependence[rs2] == Bits(32)(0)).select(Bits(32)(0), rf.dependence[rs2])
+                            self.Qj[i] = Qj
+                            self.Qk[i] = Qk
                             self.fetch_id[i] = fetch_id
                             self.imm[i] = imm
                             self.done[i] = Bits(1)(0)
+                            # with Condition((Qj == Bits(32)(0)) & (Qk == Bits(32)(0))):
+                            #     rob_entry = rob.entry_by_fetch_id(fetch_id)
+                            #     log("Got two Zs! cleaning {}", rob_entry)
+                            #     rob.busy[rob_entry] = Bits(1)(0)
                     once_tag = once_tag & ~avail
 
 
@@ -132,6 +144,13 @@ class LSB(Module):
                         with Condition(self.Qk[i] == rob_id):
                             self.Vk[i] = rob_value
                             self.Qk[i] = Bits(32)(0)
+                        Qj = (self.Qj[i] == Bits(32)(0)) | (self.Qj[i] == rob_id)
+                        Qk = (self.Qk[i] == Bits(32)(0)) | (self.Qk[i] == rob_id)
+                        #some = (self.Qj[i] == rob_id) | (self.Qk[i] == rob_id)
+                        #with Condition(Qj & Qk & some):
+                        #    rob_entry = rob.entry_by_fetch_id(self.fetch_id[i])
+                        #    log("Got ZZs! cleaning {}", rob_entry)
+                        #    rob.busy[rob_entry] = Bits(1)(0)
                     with Condition((self.fetch_id[i] == rob_id) & isStore(self.opid[i]) & once_tag):
                         we[0] = Bits(1)(1)
                         re[0] = Bits(1)(0)

@@ -13,8 +13,29 @@ class Register(Module):
     def update(self, update_pos, update_val, update_id):
         log("RF update: pos = {}, val = {}, id = {}", update_pos, update_val, update_id)
         with Condition(update_pos != Bits(32)(0)):
-            self.val[update_pos] = update_val
+            # When update_id != 0 (new instruction setup), preserve the current value
+            # This ensures that when a new instruction targets the same register as a
+            # committing instruction, the committing instruction's result is preserved.
+            # The actual value will be set by the commit logic or the ALU result.
+            with Condition(update_id != Bits(32)(0)):
+                # New instruction setup: only update dependence, preserve current value
+                self.dependence[update_pos] = update_id
+            with Condition(update_id == Bits(32)(0)):
+                # Commit or special case: update both value and dependence
+                self.val[update_pos] = update_val
+                self.dependence[update_pos] = update_id
+
+    def update_noval(self, update_pos, update_id):
+        log("RF update: pos = {}, id = {}", update_pos, update_id)
+        with Condition(update_pos != Bits(32)(0)):
             self.dependence[update_pos] = update_id
+
+    def update_value_only(self, update_pos, update_val):
+        """Update only the register value, not the dependence. Used when a new instruction
+        targets the same register as a committing instruction."""
+        log("RF update value only: pos = {}, val = {}", update_pos, update_val)
+        with Condition(update_pos != Bits(32)(0)):
+            self.val[update_pos] = update_val
 
     def clear_dependence(self):
         for i in range(32):
