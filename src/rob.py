@@ -2,6 +2,7 @@ from assassyn.frontend import *
 from assassyn.backend import elaborate
 from assassyn.utils import run_simulator, run_verilator
 
+from lsb import LSB
 from register import Register
 from src.const import ROB_SIZE, INST_WIDTH
 from toolbox import  RegArrays
@@ -115,7 +116,7 @@ class ROB(Module):
         return ret
 
     @module.combinational
-    def build(self, rf: Register, rs):
+    def build(self, rf: Register, rs, lsb: LSB):
         with Condition(self.flush_tag[0]):
             log("branch mispredict happened, flushing ROB and rf")
             self.L[0] = Bits(32)(0)
@@ -188,6 +189,8 @@ class ROB(Module):
                 # show to rs
                 rs.rob_id.push(Commit_id)
                 rs.rob_value.push(self.value[self.L[0]])
+                lsb.p_robid.push(Commit_id)
+                lsb.p_robval.push(self.value[self.L[0]])
 
                 # Check for termination
                 with Condition(self.is_terminate[self.L[0]]):

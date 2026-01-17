@@ -50,16 +50,16 @@ def build():
         rob = ROB(robL, robR, rob_reset, rob_PC)
         alu = ALU(rob_reset=rob_reset)
 
-        we, re, address_wire, write_wire = fetcher.build(sram, rs, rob, test_part=None, rob_R=robR)
+        we, re, address_wire, write_wire = fetcher.build(sram, rs, rob, test_part=None, rob_R=robR, lsb=lsb)
         sram.build(we, re, address_wire, write_wire)
 
 
         driver.build(fetcher)
         rf.build()  # Initialize RF dependence to 0
         rs.build(rf, alu)  # RS 需要引用 ALU 来发射指令
-        rob.build(rf, rs)
+        rob.build(rf, rs, lsb)
         alu.build(rob, rs)
-        lsb.build()
+        lsb.build(rf, rob)
         # test_part.build(rf, rs)
     return sys
 
