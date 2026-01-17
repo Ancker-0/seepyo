@@ -6,6 +6,7 @@ from branch import branch_predict
 from instruction import *
 from const import INST_WIDTH, ADDR_WIDTH
 from lsb import LSB
+from register import Register
 from rob import ROB
 from rs import RS
 
@@ -222,7 +223,7 @@ class Fetcher(Module):
         self.rob_PC = rob_PC
 
     @module.combinational
-    def build(self, sram: SRAM, rs: RS, rob: ROB, test_part, rob_R, lsb: LSB):
+    def build(self, sram: SRAM, rs: RS, rob: ROB, test_part, rob_R, lsb: LSB, rf: Register):
         we = Bits(1)(0)
         re = ~we
         last_read = RegArray(Bits(32), 1, [0xFFFFFFFF])
@@ -247,8 +248,9 @@ class Fetcher(Module):
             instJal = (inst.id == Bits(INST_WIDTH)(34))
             instAuipc = (inst.id == Bits(INST_WIDTH)(36))
             instLui = (inst.id == Bits(INST_WIDTH)(37))
+            instJalr = (inst.id == Bits(INST_WIDTH)(35))
             lsbSeries = (Bits(32)(19) < inst.id) & (inst.id < Bits(32)(28))
-            with Condition((inst.id != Bits(INST_WIDTH)(0)) & ~instJal & ~instAuipc & ~instLui & ~lsbSeries & ~rob.qfull() & rs.avail()):
+            with Condition((inst.id != Bits(INST_WIDTH)(0)) & ~instJal & ~instAuipc & ~instLui & ~lsbSeries & ~instJalr & ~rob.qfull() & rs.avail()):
                 (address_wire & self)[0] <= address_wire[0] + Bits(32)(1)
                 rs.rd.push(inst.rd)
                 rs.rs1.push(inst.rs1)
@@ -335,6 +337,19 @@ class Fetcher(Module):
                 rob.expect_value.push(Bits(INST_WIDTH)(0))
                 rob.branch_PC.push(Bits(INST_WIDTH)(0))
                 (address_wire & self)[0] <= address_wire[0] + Bits(32)(1)
+            
+            with Condition(instJalr):
+                with Condition(rf.dependence[inst.rs1] == Bits(32)(0)):
+                    rob.rd.push(inst.rd)
+                    rob.rs1.push(inst.rs1)  # useless
+                    rob.rs2.push(inst.rs2)  # useless
+                    rob.imm.push((address_wire[0] + Bits(32)(1)) << Bits(32)(2))
+                    rob.Type.push(inst.Type)
+                    rob.Id.push(inst.id)
+                    rob.Fetch_id.push(tick[0])
+                    rob.expect_value.push(Bits(INST_WIDTH)(0))
+                    rob.branch_PC.push(Bits(INST_WIDTH)(0))
+                    (address_wire & self)[0] <= address_wire[0] + (inst.imm >> Bits(32)(2))
 
         lsb.async_called()
         rs.async_called()

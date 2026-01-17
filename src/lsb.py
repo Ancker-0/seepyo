@@ -160,10 +160,12 @@ class LSB(Module):
 
             with Condition(read_entry[0] != Bits(32)(self.size)):
                 with Condition(waiting[0]):
+                    log("waiting for sram")
                     waiting[0] = Bits(1)(0)
                 with Condition(~waiting[0]):
                     read_entry[0] <= Bits(32)(self.size)
                     id = read_entry[0]
+                    log("received dram data entry_id = {}", id)
                     self.clean(id)
                     rob_entry = rob.entry_by_fetch_id(self.fetch_id[id])
                     rob.value[rob_entry] = self.sram.dout[0]
