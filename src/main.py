@@ -6,6 +6,7 @@ from assassyn.backend import elaborate
 from assassyn.utils import run_simulator, run_verilator
 
 from fetch import Fetcher
+from lsb import LSB
 from src.instruction import Instruction, Number_to_Register_Name, Id_to_Instruction_Name
 from const import INST_WIDTH, ADDR_WIDTH
 from rs import RS
@@ -44,6 +45,7 @@ def build():
         # test_part = Test_Part()
         rf = Register()
         rs = RS()
+        lsb = LSB()
         robL, robR = RegArray(Bits(32), 1, [0]), RegArray(Bits(32), 1, [0])
         rob = ROB(robL, robR, rob_reset, rob_PC)
         alu = ALU(rob_reset=rob_reset)
@@ -57,6 +59,7 @@ def build():
         rs.build(rf, alu)  # RS 需要引用 ALU 来发射指令
         rob.build(rf, rs)
         alu.build(rob, rs)
+        lsb.build()
         # test_part.build(rf, rs)
     return sys
 

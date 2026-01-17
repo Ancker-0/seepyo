@@ -5,3 +5,4 @@ ROB_WIDTH  = 3
 
 RS_SIZE = 8
 ROB_SIZE = 8
+LSB_SIZE = 8
