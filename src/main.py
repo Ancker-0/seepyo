@@ -50,7 +50,7 @@ def build():
         rob = ROB(robL, robR, rob_reset, rob_PC)
         alu = ALU(rob_reset=rob_reset)
 
-        we, re, address_wire, write_wire = fetcher.build(sram, rs, rob, test_part=None, rob_R=robR, lsb=lsb)
+        we, re, address_wire, write_wire = fetcher.build(sram, rs, rob, test_part=None, rob_R=robR, lsb=lsb, rf=rf)
         sram.build(we, re, address_wire, write_wire)
 
 

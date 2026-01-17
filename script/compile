@@ -12,7 +12,19 @@ gen() {
   riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -nostdlib -nostartfiles start.o $1.o -o $1.elf -T link.ld -lgcc
   riscv64-unknown-elf-objdump -d $1.elf > $1.dump
   riscv64-unknown-elf-objcopy -O binary $1.elf $1.bin
-  xxd -p -c 4 $1.bin > $1.data
+  # xxd -p -c 4 $1.bin > $1.data
+  python3 -c "
+import sys
+with open('$1.bin', 'rb') as f:
+    while True:
+        data = f.read(4)
+        if len(data) < 4:
+            break
+        # Convert bytes to int (little-endian)
+        val = int.from_bytes(data, byteorder='little')
+        # Output as 8-char hex string
+        print(f'{val:08x}')
+" > $1.data
   gcc $1.c -o $1
 
   # ../src/main $1.data
