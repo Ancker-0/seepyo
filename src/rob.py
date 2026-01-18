@@ -167,7 +167,7 @@ class ROB(Module):
             # commit
             commit_inst_type = inst_id_to_type(self.Op_id[self.L[0]])
             lsb_entry = lsb.entry_by_fetchid(self.fetch_id[self.L[0]])
-            isSW = (self.Op_id[self.L[0]] == Bits(32)(27)) & (lsb.Qj[lsb_entry] == Bits(32)(0)) & (lsb.Qk[lsb_entry] == Bits(32)(0))
+            isSW = (self.Op_id[self.L[0]] == Bits(32)(27)) & (lsb.Qj[lsb_entry] == Bits(32)(0)) & (lsb.Qk[lsb_entry] == Bits(32)(0)) & lsb.no_depS(self.fetch_id[self.L[0]]) & lsb.no_depL(self.fetch_id[self.L[0]]) & ~lsb.justWritten[0]
             top_ready = (self.L[0] != self.R[0]) & ((~self.busy[self.L[0]]) | isSW)
             predict_failed = (commit_inst_type == Bits(32)(4)) & (self.expect_val[self.L[0]] != self.value[self.L[0]])
 
@@ -177,10 +177,11 @@ class ROB(Module):
 
                 # in case of branch mispredict
                 with Condition(predict_failed):
-                    log("PREDICTION FAIL!!!")
+                    log("PREDICTION FAIL at fetchid = {}!!!", Commit_id)
                     rs.flush_tag.push(Bits(1)(1))
                     (self.rob_reset & self)[0] <= Bits(1)(1)
                     (self.rob_PC & self)[0] <= self.branch_pc_val[self.L[0]]
+                    # rf.clear_dependence()
                     lsb.flush_tag.push(Bits(1)(1))
                     self.flush_tag[0] = Bits(1)(1) # for register, we need one clock lag to flush for register is a downstream module in code but instead need one clock
 

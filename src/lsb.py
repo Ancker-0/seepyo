@@ -39,6 +39,7 @@ class LSB(Module):
         self.done = RegArrays(Bits(1), LSB_SIZE, self)
 
         self.sram = SRAM(32, 2 ** ADDR_WIDTH, init_file=None)
+        self.justWritten = RegArrays(Bits(1), 1, self)
 
     def clean(self, Id):
         self.opid[Id] = Bits(32)(0)
@@ -63,10 +64,16 @@ class LSB(Module):
             ret = ret | (self.opid[i] == Bits(32)(0))
         return ret
 
-    def no_dep(self, fetchid):
+    def no_depS(self, fetchid):
         ret = Bits(1)(1)
         for i in range(self.size):
-            ret = ret & (~isStore(self.opid[i]) | (fetchid < self.fetch_id[i]))
+            ret = ret & (~isStore(self.opid[i]) | ~(fetchid > self.fetch_id[i]))
+        return ret
+
+    def no_depL(self, fetchid):
+        ret = Bits(1)(1)
+        for i in range(self.size):
+            ret = ret & (~isLoad(self.opid[i]) | ~(fetchid > self.fetch_id[i]))
         return ret
 
     def entry_by_fetchid(self, idx):
@@ -93,6 +100,10 @@ class LSB(Module):
                 with Condition(port.valid()):
                     port.pop()
         with Condition(~flush):
+            with Condition(self.justWritten[0]):
+                self.justWritten[0] = Bits(1)(0)
+                we[0] = Bits(1)(0)
+                re[0] = Bits(1)(0)
             with Condition(self.p_opid.valid() & self.avail()):
                 opid = self.p_opid.pop()
                 rs1 = self.p_rs1.pop()
@@ -155,9 +166,10 @@ class LSB(Module):
                         we[0] = Bits(1)(1)
                         re[0] = Bits(1)(0)
                         address_wire[0] = (self.Vj[i] + self.imm[i]) >> Bits(32)(2)
+                        self.justWritten[0] = Bits(1)(1)
                         wdata[0] = self.Vk[i]
                         self.clean(i)
-                        log("issue writing addr = {}, data = {}", (self.Vj[i] + self.imm[i]) >> Bits(32)(2), self.Vk[i])
+                        log("issue writing addr = {}, data = {}, fetchid = {}", (self.Vj[i] + self.imm[i]) >> Bits(32)(2), self.Vk[i], self.fetch_id[i])
                     once_tag = once_tag & ~((self.fetch_id[i] == rob_id) & isStore(self.opid[i]) & once_tag)
 
             # ask sram
@@ -167,14 +179,14 @@ class LSB(Module):
                     once_tag = once_tag & ~((self.fetch_id[i] == peek_robid) & isStore(self.opid[i]) & once_tag)
                 once_tag = once_tag | ~self.p_robid.valid()
                 for i in range(self.size):
-                    loadCan = (self.opid[i] == Bits(32)(24)) & (self.Qj[i] == Bits(32)(0)) & self.no_dep(self.fetch_id[i])
+                    loadCan = (self.opid[i] == Bits(32)(24)) & (self.Qj[i] == Bits(32)(0)) & self.no_depS(self.fetch_id[i]) & ~self.justWritten[0]
                     with Condition(once_tag & loadCan):  # lb
                         we[0] = Bits(1)(0)
                         re[0] = Bits(1)(1)
                         address_wire[0] = (self.Vj[i] + self.imm[i]) >> Bits(32)(2)
                         read_entry[0] = Bits(32)(i)
                         waiting[0] = Bits(1)(1)
-                        log("issue reading addr = {}", (self.Vj[i] + self.imm[i]) >> Bits(32)(2))
+                        log("issue reading addr = {}, fetchid = {}", (self.Vj[i] + self.imm[i]) >> Bits(32)(2), self.fetch_id[i])
                     once_tag = once_tag & (~loadCan)
 
             with Condition(read_entry[0] != Bits(32)(self.size)):
@@ -182,9 +194,11 @@ class LSB(Module):
                     log("waiting for sram")
                     waiting[0] = Bits(1)(0)
                 with Condition(~waiting[0]):
-                    read_entry[0] <= Bits(32)(self.size)
+                    read_entry[0] = Bits(32)(self.size)
                     id = read_entry[0]
-                    log("received dram data entry_id = {}", id)
+                    we[0] = Bits(1)(0)
+                    re[0] = Bits(1)(0)
+                    log("received dram data entry_id = {}, addr = {}, data = {}, fetchid = {}", id, address_wire[0], self.sram.dout[0], self.fetch_id[id])
                     self.clean(id)
                     rob_entry = rob.entry_by_fetch_id(self.fetch_id[id])
                     rob.value[rob_entry] = self.sram.dout[0]
