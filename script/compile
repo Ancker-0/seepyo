@@ -1,5 +1,7 @@
 #!/bin/bash
 
+DUMMY=$HOME/src/seepyo/data/dummy.data
+
 usage() {
   echo "Usage: $0 <filename (no .c)>       Generate <filename>.data and <filename>.dump from <filename>.c"
   echo "       $0 -c                       Clean temporary files"
@@ -25,6 +27,7 @@ with open('$1.bin', 'rb') as f:
         # Output as 8-char hex string
         print(f'{val:08x}')
 " > $1.data
+  ln -sf "$1.data" "$DUMMY"
   gcc $1.c -o $1
 
   # ../src/main $1.data
@@ -47,8 +50,8 @@ SECTIONS {
 }
 
 MEMORY {
-  text (rx)  : ORIGIN = 0x00000000, LENGTH = 4096M
-  data (rw)  : ORIGIN = 0x80000000, LENGTH = 4096M
+  text (rx)  : ORIGIN = 0x00000000, LENGTH = 524288
+  data (rw)  : ORIGIN = 524288, LENGTH = 524288
 }
 EOF
 
@@ -56,7 +59,7 @@ EOF
 .section .text
 .global _start
 _start:
-    li sp, 8192
+    li sp, 524288
     call main
     sb x0, -1(x0)
 1:  j 1b

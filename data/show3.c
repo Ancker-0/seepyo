@@ -1,8 +1,8 @@
 #define N 100
 
-void add(int *dest, int *a, int *b) {
+void mul(int *dest, int *a, int *b) {
   for (int i = 0; i < N; ++i)
-    dest[i] = a[i] + b[i];
+    dest[i] = a[i] * b[i];
 }
 
 
@@ -12,7 +12,7 @@ int main() {
     a[i] = i * i;
     b[i] = i + 2;
   }
-  add(c, a, b);
+  mul(c, a, b);
   int ans = 0;
   for (int i = 0; i < N; ++i) {
     ans ^= c[i] * i;

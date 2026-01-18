@@ -5,7 +5,6 @@ void add(int *dest, int *a, int *b) {
     dest[i] = a[i] + b[i];
 }
 
-
 int main() {
   int a[N], b[N], c[N];
   for (int i = 0; i < N; ++i) {

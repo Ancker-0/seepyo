@@ -54,8 +54,8 @@ SECTIONS {
 }
 
 MEMORY {
-  text (rx)  : ORIGIN = 0x00000000, LENGTH = 4096M
-  data (rw)  : ORIGIN = 0x80000000, LENGTH = 4096M
+  text (rx)  : ORIGIN = 0x00000000, LENGTH = 524288
+  data (rw)  : ORIGIN = 524288, LENGTH = 524288
 }
 EOF
 }
