@@ -117,7 +117,7 @@ class ROB(Module):
         return ret
 
     @module.combinational
-    def build(self, rf: Register, rs, lsb):
+    def build(self, rf: Register, rs, lsb, predictor):
         with Condition(self.flush_tag[0]):
             log("branch mispredict happened, flushing ROB and rf")
             self.L[0] = Bits(32)(0)
@@ -149,7 +149,7 @@ class ROB(Module):
                     with Condition(inst.id != Bits(32)(35)):
                         self.rob_push(inst.id, inst.rd, Bits(32)(0), Fetch_id, expect_value, branch_PC, busy=True)
                 with Condition(inst.Type == Bits(32)(4)):
-                    self.rob_push(inst.id, Bits(32)(0), Bits(32)(0), Fetch_id, expect_value, branch_PC)
+                    self.rob_push(inst.id, inst.rd, Bits(32)(0), Fetch_id, expect_value, branch_PC)  # inst.rd is actually PC
                 with Condition(inst.Type == Bits(32)(3)):
                     # Type S (store) - allocate ROB entry for store instructions
                     # Use rob_push_store which sets Busy=0 (stores don't execute in ALU)
@@ -174,6 +174,12 @@ class ROB(Module):
             with Condition(top_ready):
                 Commit_id = self.fetch_id[self.L[0]]
                 log("Committing inst id = {}, value = {}", Commit_id, self.value[self.L[0]])
+
+                with Condition(commit_inst_type == Bits(32)(4)):  # B-type
+                    predictor.async_called(
+                        p_PC = self.dest[self.L[0]],
+                        p_accept = ~predict_failed,
+                    )
 
                 # in case of branch mispredict
                 with Condition(predict_failed):

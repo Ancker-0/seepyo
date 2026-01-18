@@ -5,6 +5,7 @@ from assassyn.frontend import *
 from assassyn.backend import elaborate
 from assassyn.utils import run_simulator, run_verilator
 
+from branch import Predictor
 from fetch import Fetcher
 from lsb import LSB
 from src.instruction import Instruction, Number_to_Register_Name, Id_to_Instruction_Name
@@ -40,6 +41,7 @@ def build():
         fetcher = Fetcher(rob_reset, rob_PC)
         init_file = Sys.argv[1] if len(Sys.argv) >= 2 else 'dummy.data'
         sram = SRAM(INST_WIDTH, 2 ** ADDR_WIDTH, init_file)
+        predictor = Predictor()
 
         driver = Driver()
         # test_part = Test_Part()
@@ -50,14 +52,15 @@ def build():
         rob = ROB(robL, robR, rob_reset, rob_PC)
         alu = ALU(rob_reset=rob_reset)
 
-        we, re, address_wire, write_wire = fetcher.build(sram, rs, rob, test_part=None, rob_R=robR, lsb=lsb, rf=rf)
+        we, re, address_wire, write_wire = fetcher.build(sram, rs, rob, test_part=None, rob_R=robR, lsb=lsb, rf=rf, predictor=predictor)
         sram.build(we, re, address_wire, write_wire)
 
 
+        predictor.build()
         driver.build(fetcher)
         rf.build()  # Initialize RF dependence to 0
         rs.build(rf, alu)  # RS 需要引用 ALU 来发射指令
-        rob.build(rf, rs, lsb)
+        rob.build(rf, rs, lsb, predictor)
         alu.build(rob, rs)
         lsb.build(rf, rob)
         # test_part.build(rf, rs)

@@ -2,7 +2,7 @@ from assassyn.frontend import *
 from assassyn.backend import elaborate
 from assassyn.utils import run_simulator, run_verilator
 
-from branch import branch_predict
+from branch import Predictor
 from instruction import *
 from const import INST_WIDTH, ADDR_WIDTH
 from lsb import LSB
@@ -224,7 +224,7 @@ class Fetcher(Module):
         self.rob_PC = rob_PC
 
     @module.combinational
-    def build(self, sram: SRAM, rs: RS, rob: ROB, test_part, rob_R, lsb: LSB, rf: Register):
+    def build(self, sram: SRAM, rs: RS, rob: ROB, test_part, rob_R, lsb: LSB, rf: Register, predictor: Predictor):
         we = Bits(1)(0)
         re = ~we
         last_read = RegArray(Bits(32), 1, [0xFFFFFFFF])
@@ -269,7 +269,7 @@ class Fetcher(Module):
 
                 rs.fetch_id.push(tick[0])
 
-                expect_value = (inst.Type == Bits(32)(4)).select(branch_predict(address_wire[0] << Bits(32)(2), inst.imm), Bits(1)(0))
+                expect_value = (inst.Type == Bits(32)(4)).select(predictor.branch_predict(address_wire[0] << Bits(32)(2), inst.imm), Bits(1)(0))
                 nextPC = expect_value.select((address_wire[0] << Bits(32)(2)) + inst.imm, (address_wire[0] << Bits(32)(2)) + Bits(32)(4))
                 otherPC = (~expect_value).select((address_wire[0] << Bits(32)(2)) + inst.imm, (address_wire[0] << Bits(32)(2)) + Bits(32)(4))
                 (address_wire & self)[0] <= (nextPC >> Bits(32)(2))
@@ -277,7 +277,7 @@ class Fetcher(Module):
                     log("B-type jump to {} or {}", nextPC, otherPC)
 
                 # 推送到 ROB - 始终推送以保持 RS 和 ROB 同步
-                rob.rd.push(inst.rd)
+                rob.rd.push((inst.Type == Bits(32)(4)).select(address_wire[0] << Bits(32)(2), inst.rd))
                 rob.rs1.push(inst.rs1)
                 rob.rs2.push(inst.rs2)
                 rob.imm.push(inst.imm)
