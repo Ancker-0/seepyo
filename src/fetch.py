@@ -238,13 +238,18 @@ class Fetcher(Module):
 
         (last_read & self)[0] <= address_wire[0]
 
+
         with Condition(self.rob_reset[0]):
             log("PC reset to {}", (self.rob_PC[0] >> Bits(32)(2)))
             address_wire[0] <= (self.rob_PC[0] >> Bits(32)(2))
             self.rob_reset[0] <= Bits(1)(0)
 
+        bubbled = RegArrays(Bits(1), 1, self)
         jalrBubbled = RegArrays(Bits(2), 1, self)
-        with Condition((address_wire[0] == last_read[0]) & ~self.rob_reset[0]):
+        with Condition((address_wire[0] == last_read[0]) & ~self.rob_reset[0] & ~bubbled[0]):
+            bubbled[0] = Bits(1)(1)
+        with Condition((address_wire[0] == last_read[0]) & ~self.rob_reset[0] & bubbled[0]):
+            bubbled[0] = Bits(1)(0)
             log('Got inst {:#X} at addr {}', sram.dout[0], address_wire[0])
             inst = decode_inst(sram.dout[0])
             inst.show()

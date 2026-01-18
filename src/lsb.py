@@ -77,9 +77,9 @@ class LSB(Module):
         return ret
 
     def entry_by_fetchid(self, idx):
-        ret = Bits(1)(0)
+        ret = Bits(32)(0)
         for i in range(self.size):
-            ret = ret & (self.fetch_id[i] == idx)
+            ret = (self.fetch_id[i] == idx).select(Bits(32)(i), ret)
         return ret
 
     @module.combinational
